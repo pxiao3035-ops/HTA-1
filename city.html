@@ -1,0 +1,1058 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><title>Hong Kong 尖沙咀</title><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="尖沙咀"><style>:root{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);box-sizing:border-box}*,*::before,*::after{box-sizing:border-box}body{margin:0;background:#0b1016;font:14px system-ui,sans-serif}[hidden]{display:none!important}img{max-width:100%}</style></head><body><title>Hong Kong 尖沙咀</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 布局：整页就是游戏画面，界面元素浮在四角；单一深色风格（夜景城市），不跟随浅色主题 */
+:root { --ink: #0b1016; --panel: rgba(12, 18, 26, .72); --line: rgba(255, 255, 255, .16); --fg: #eef3f7; --dim: #9fb0bf; --amber: #ffb648; --teal: #3ad6c4; --red: #ff5a4d; color-scheme: dark;
+  --f-ui: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif; --f-num: "DIN Alternate", "Avenir Next Condensed", "Roboto Condensed", ui-monospace, monospace; }
+html, body { height: 100%; overscroll-behavior: none; }
+body { background: var(--ink); color: var(--fg); font: 14px/1.5 var(--f-ui); overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
+#game { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; }
+#cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hud { position: absolute; pointer-events: none; text-shadow: 0 1px 2px rgba(0, 0, 0, .8); }
+#mini { left: max(16px, env(safe-area-inset-left, 0px)); top: calc(12px + env(safe-area-inset-top, 0px)); width: clamp(104px, 22vmin, 168px); aspect-ratio: 1; border-radius: 50%; box-shadow: 0 2px 12px rgba(0, 0, 0, .55); }
+#stat { right: max(16px, env(safe-area-inset-right, 0px)); top: calc(12px + env(safe-area-inset-top, 0px)); text-align: right; display: grid; gap: 2px; font-family: var(--f-num); }
+#cash { font-size: 26px; color: #9be28a; letter-spacing: .02em; } #clock { font-size: 15px; color: var(--dim); } #stars { font-size: 18px; color: var(--amber); letter-spacing: .12em; min-height: 1.2em; } #tok { font-size: 13px; color: var(--dim); } #street { font: 14px var(--f-ui); color: var(--fg); }
+#speed { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(132px + env(safe-area-inset-bottom, 0px)); font: 44px/1 var(--f-num); text-align: right; } #speed small { display: block; font-size: 12px; color: var(--dim); letter-spacing: .14em; }
+#job { left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); padding: 6px 14px; border-radius: 4px; max-width: min(70vw, 460px); text-align: center; text-shadow: none; } #job b { color: var(--amber); font-family: var(--f-num); }
+#tip { left: 50%; bottom: calc(24% + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); padding: 5px 12px; border-radius: 4px; text-shadow: none; white-space: nowrap; }
+#toast { left: 50%; top: 22%; transform: translateX(-50%); font-size: 22px; font-weight: 600; text-align: center; opacity: 0; transition: opacity .3s; white-space: nowrap; } #toast.on { opacity: 1; }
+#pauseBtn { position: absolute; left: calc(max(16px, env(safe-area-inset-left, 0px)) + clamp(104px, 22vmin, 168px) + 10px); top: calc(12px + env(safe-area-inset-top, 0px)); }
+button { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 8px 14px; cursor: pointer; touch-action: manipulation; }
+button:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; } button.primary { background: var(--amber); color: #1a1205; border-color: transparent; font-weight: 600; }
+.seg { display: inline-flex; gap: 4px; flex-wrap: wrap; } .seg button[aria-pressed="true"] { background: var(--teal); color: #04201c; border-color: transparent; }
+/* 触屏操作 */
+#stick { position: absolute; left: max(22px, env(safe-area-inset-left, 0px)); bottom: calc(26px + env(safe-area-inset-bottom, 0px)); width: 132px; height: 132px; border-radius: 50%; border: 2px solid var(--line); background: rgba(0, 0, 0, .28); touch-action: none; }
+#stick i { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(255, 255, 255, .55); pointer-events: none; }
+#pads { position: absolute; right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(2, 72px); gap: 12px; }
+#pads button { height: 72px; border-radius: 50%; padding: 0; font-size: 15px; background: rgba(12, 18, 26, .55); touch-action: none; } #pads button.act { background: rgba(255, 182, 72, .8); color: #1a1205; }
+#game[data-touch="0"] #stick, #game[data-touch="0"] #pads { display: none; }
+/* 开始 / 暂停面板 */
+#menu { position: absolute; inset: 0; display: grid; place-items: center; background: linear-gradient(180deg, rgba(6, 10, 16, .25), rgba(6, 10, 16, .82)); padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); overflow: auto; }
+#menu .box { width: min(560px, 100%); display: grid; gap: 14px; }
+#menu h1 { margin: 0; font: 600 clamp(40px, 9vw, 72px)/1 var(--f-ui); letter-spacing: .08em; text-wrap: balance; } #menu h1 small { display: block; font: 14px var(--f-num); letter-spacing: .5em; color: var(--amber); margin-bottom: 8px; }
+#menu p { margin: 0; color: var(--dim); max-width: 46ch; } #menu dl { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; font-size: 13px; } #menu dt { color: var(--amber); font-family: var(--f-num); white-space: nowrap; } #menu dd { margin: 0; color: var(--fg); }
+#tpBtn { position: absolute; left: calc(max(16px, env(safe-area-inset-left, 0px)) + clamp(104px, 22vmin, 168px) + 58px); top: calc(12px + env(safe-area-inset-top, 0px)); } #tpRow { align-items: flex-start; } #tpSeg { flex: 1; min-width: 0; }
+#menu .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } #menu .row > span { color: var(--dim); min-width: 4em; }
+#err { color: var(--red); }
+#hp { width: 150px; height: 9px; background: rgba(0, 0, 0, .45); border: 1px solid var(--line); border-radius: 4px; position: relative; overflow: hidden; justify-self: end; margin-top: 4px; } #hpb { position: absolute; inset: 0 auto 0 0; width: 100%; background: #4fd86a; } #arb { position: absolute; inset: 0 auto auto 0; width: 0; height: 3px; background: #8fd0ff; }
+#wep { font-size: 14px; } #cross { left: 50%; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border: 2px solid rgba(255, 255, 255, .85); border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, .5); }
+#fade { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: #060203; }
+#hurt { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(200, 20, 10, .6) 100%); }
+#shop { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(360px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto; background: rgba(12, 18, 26, .92); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 8px; } #shop h2 { margin: 0; font-size: 20px; } #shop p { margin: 0; color: var(--amber); font-family: var(--f-num); } #shopList { display: grid; gap: 6px; } #shop button { text-align: left; } #shop button:disabled { opacity: .4; }
+#pads button.fire { background: rgba(255, 90, 77, .82); color: #fff; }
+@media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+</style>
+<div id="game" data-touch="0">
+  <canvas id="cv"></canvas>
+  <canvas id="mini" class="hud" width="336" height="336"></canvas>
+  <button id="pauseBtn" aria-label="暂停">‖</button><button id="tpBtn" aria-label="传送">传送</button>
+  <div id="stat" class="hud"><div id="cash">$0</div><div id="stars"></div><div id="clock">17:18</div><div id="street"></div><div id="tok"></div><div id="hp"><i id="hpb"></i><i id="arb"></i></div><div id="wep"></div></div>
+  <div id="cross" class="hud" hidden></div><div id="hurt"></div><div id="fade"></div>
+  <div id="speed" class="hud" hidden>0<small>KM/H</small></div>
+  <div id="job" class="hud" hidden></div>
+  <div id="tip" class="hud" hidden></div>
+  <div id="toast" class="hud"></div>
+  <div id="stick"><i></i></div>
+  <div id="pads"><button id="bWep">武器</button><button id="bFire" class="fire">打</button><button id="bUse">上车</button><button id="bCam">视角</button><button id="bBrake">刹车</button><button id="bJump" class="act">跳</button></div>
+  <div id="shop" hidden><h2>枪店</h2><p id="shopCash"></p><div id="shopList"></div><button id="shopX">离开</button></div>
+  <div id="menu"><div class="box">
+    <h1><small>HONG KONG</small>尖沙咀</h1>
+    <p id="intro">一座参考香港尖沙咀海港城一带做的海边城市：挂满招牌的弥敦道、海旁的钟楼和长廊、码头的邮轮、对岸的天际线。走路、开的士或双层巴士兜风、接快递单赚钱、找齐 30 个金色信标；也可以拿上刀枪，去弥敦道的银行干一票，再想办法甩掉警察。车辆靠左行驶。</p>
+    <dl id="keys">
+      <dt>W A S D</dt><dd>走路 / 开车（Shift 跑步）</dd>
+      <dt>鼠标</dt><dd>点一下画面后移动鼠标转视角</dd>
+      <dt>F</dt><dd>上车 / 下车 · 在银行里开抢 · 进枪店 · 搜举手的人</dd>
+      <dt>鼠标左键 · J</dt><dd>出拳 / 挥刀 / 开枪（在车里是按喇叭）</dd>
+      <dt>Q · 1–5</dt><dd>换武器</dd>
+      <dt>空格</dt><dd>跳 / 手刹</dd>
+      <dt>T · C · Esc</dt><dd>快进时间 · 镜头回正 · 暂停</dd>
+      <dt>触屏</dt><dd>左下摇杆移动，右半屏滑动转视角，右下按钮：武器、打、上车、视角、跑、跳</dd>
+    </dl>
+    <div class="row"><span>画质</span><div class="seg" id="qSeg"><button data-q="0">流畅</button><button data-q="1" aria-pressed="true">标准</button><button data-q="2">高清</button></div></div>
+    <div class="row"><span>时间</span><div class="seg" id="tSeg"><button data-t="8">早晨</button><button data-t="13">正午</button><button data-t="17.3" aria-pressed="true">黄昏</button><button data-t="22">夜晚</button></div></div>
+    <div class="row" id="tpRow"><span>传送</span><div class="seg" id="tpSeg"></div></div>
+    <p id="err" role="alert" hidden></p>
+    <div class="row"><button class="primary" id="go">进入城市</button><button id="reset" hidden>回到出生点</button></div>
+  </div></div>
+</div>
+<script>
+'use strict';
+/* =====================================================================
+ * Hong Kong 尖沙咀 —— 单文件 3D 开放世界。不依赖任何外部库，直接用 WebGL2。
+ * 目录：1 数学 · 2 城市生成 · 3 着色器 · 4 渲染 · 5 车辆 / 行人 / 玩家 · 6 任务与界面 · 7 主循环
+ * ===================================================================== */
+const $ = id => document.getElementById(id), clamp = (v, a, b) => v < a ? a : v > b ? b : v, lerp = (a, b, t) => a + (b - a) * t;
+function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function angDiff(a, b) { let d = a - b; d -= Math.PI * 2 * Math.round(d / (Math.PI * 2)); return d; }
+
+/* ---------- 1 · 矩阵（列主序，和 WebGL 一致） ---------- */
+const M4 = {
+  mul(a, b) { const o = new Float32Array(16); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3]; return o; },
+  persp(fov, asp, n, f) { const t = 1 / Math.tan(fov / 2), o = new Float32Array(16); o[0] = t / asp; o[5] = t; o[10] = (f + n) / (n - f); o[11] = -1; o[14] = 2 * f * n / (n - f); return o; },
+  ortho(l, r, b, t, n, f) { const o = new Float32Array(16); o[0] = 2 / (r - l); o[5] = 2 / (t - b); o[10] = -2 / (f - n); o[12] = -(r + l) / (r - l); o[13] = -(t + b) / (t - b); o[14] = -(f + n) / (f - n); o[15] = 1; return o; },
+  look(e, c, u) { let zx = e[0] - c[0], zy = e[1] - c[1], zz = e[2] - c[2], l = Math.hypot(zx, zy, zz); zx /= l; zy /= l; zz /= l; let xx = u[1] * zz - u[2] * zy, xy = u[2] * zx - u[0] * zz, xz = u[0] * zy - u[1] * zx; l = Math.hypot(xx, xy, xz); xx /= l; xy /= l; xz /= l; const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx; return new Float32Array([xx, yx, zx, 0, xy, yy, zy, 0, xz, yz, zz, 0, -(xx * e[0] + xy * e[1] + xz * e[2]), -(yx * e[0] + yy * e[1] + yz * e[2]), -(zx * e[0] + zy * e[1] + zz * e[2]), 1]); },
+  // 平移 · 绕 Y 转 · 绕 X 转 · 绕 Z 转 · 缩放，一次拼好
+  trs(x, y, z, ry, rx, rz, sx, sy, sz) { const cy = Math.cos(ry), sy_ = Math.sin(ry), cx = Math.cos(rx), sx_ = Math.sin(rx), cz = Math.cos(rz), sz_ = Math.sin(rz);
+    const r00 = cy * cz + sy_ * sx_ * sz_, r01 = -cy * sz_ + sy_ * sx_ * cz, r02 = sy_ * cx, r10 = cx * sz_, r11 = cx * cz, r12 = -sx_, r20 = -sy_ * cz + cy * sx_ * sz_, r21 = sy_ * sz_ + cy * sx_ * cz, r22 = cy * cx;
+    return new Float32Array([r00 * sx, r10 * sx, r20 * sx, 0, r01 * sy, r11 * sy, r21 * sy, 0, r02 * sz, r12 * sz, r22 * sz, 0, x, y, z, 1]); },
+};
+const IDENT = M4.trs(0, 0, 0, 0, 0, 0, 1, 1, 1);
+
+/* ---------- 2 · 城市 ----------
+ * 14×14 个街区的海岛。街区间距 80 米：马路中线在格线上，沥青宽 12 米，两边各 2 米人行道，街区 64 米见方。
+ * 材质编号：0 可染色漆面 1 楼房外墙 2 沥青 3 铺地 4 草地 5 树冠 6 玻璃幕墙 7 发光 8 沙滩 9 固定颜色 10 铁皮
+ */
+/* 路网：南北向、东西向各 15 条路，间距和宽度都不一样（按尖沙咀的真实比例排）。
+   公园、商场、海旁这些地方是连成一片的，中间的路段不通车 */
+const GRID = 14, HALF = 560, CURB = 0.18, SW = 2;
+const XS = [-560, -482, -400, -318, -262, -206, -146, -70, 16, 92, 178, 290, 392, 486, 560], HX = [4, 4, 7, 6, 3.6, 3.6, 3.6, 10, 4, 3.6, 8.5, 6, 5, 8, 4];
+const ZS = [-560, -470, -380, -290, -205, -125, -50, 30, 105, 180, 260, 335, 420, 520, 560], HZ = [7, 3.6, 7, 3.6, 4, 4, 3.6, 5, 3.6, 5, 3.6, 5, 10, 4, 4];
+const lanesOf = hw => hw >= 8 ? 3 : hw >= 5.5 ? 2 : 1;
+const City = { verts: [], blocks: [], posts: [], trees: [], spots: [], lamps: [], hills: [], marks: [], cv: [], ch: [], n: 0 };
+const colOf = x => { let i = 0; while (i < GRID - 1 && x >= XS[i + 1]) i++; return i; }, rowOf = z => { let j = 0; while (j < GRID - 1 && z >= ZS[j + 1]) j++; return j; };
+const sstep = t => { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
+// 地形：公园和小山丘的高度。边上是平的，往里慢慢隆起
+const hillAt = (x, z) => { let h = 0; for (const H of City.hills) { if (x <= H.x0 || x >= H.x1 || z <= H.z0 || z >= H.z1) continue; h += H.h * sstep((x - H.x0) / H.m) * sstep((H.x1 - x) / H.m) * sstep((z - H.z0) / H.m) * sstep((H.z1 - z) / H.m) * (0.74 + 0.26 * Math.sin(x * 0.043 + H.s) * Math.cos(z * 0.037 + H.s * 2)); } return h; };
+/* 网格工具 */
+// 方盒
+function box(out, x0, y0, z0, x1, y1, z1, col, mat, top, tmat) {
+  const P = (a, b, c, d, n, cl, m) => { for (const p of [a, b, c, a, c, d]) out.push(p[0], p[1], p[2], n[0], n[1], n[2], cl[0], cl[1], cl[2], m); };
+  P([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [0, 0, 1], col, mat); P([x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [0, 0, -1], col, mat);
+  P([x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [1, 0, 0], col, mat); P([x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [-1, 0, 0], col, mat);
+  P([x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], [0, 1, 0], top || col, tmat === undefined ? mat : tmat);
+}
+// 放样：把一圈圈截面连成曲面，法线取平滑值——车身、车舱都是这么做出来的，所以是圆润的而不是方盒
+function loft(out, rings, pick, caps) {
+  const S = rings.length, n = rings[0].length, sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], nrm = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+  const cen = rings.map(r => { const c = [0, 0, 0]; for (const p of r) { c[0] += p[0] / n; c[1] += p[1] / n; c[2] += p[2] / n; } return c; });
+  const N = rings.map((r, si) => r.map((p, ri) => { const a = r[(ri + 1) % n], b = r[(ri + n - 1) % n], c = rings[Math.min(S - 1, si + 1)][ri], d = rings[Math.max(0, si - 1)][ri]; let m = nrm(cross(sub(a, b), sub(c, d))); const o = sub(p, cen[si]); if (m[0] * o[0] + m[1] * o[1] + m[2] * o[2] < 0) m = [-m[0], -m[1], -m[2]]; return m; }));
+  const tri = (a, na, b, nb, c, nc, cm) => { const fn = cross(sub(b, a), sub(c, a)), av = [na[0] + nb[0] + nc[0], na[1] + nb[1] + nc[1], na[2] + nb[2] + nc[2]]; const fl = fn[0] * av[0] + fn[1] * av[1] + fn[2] * av[2] < 0; for (const [p, q] of fl ? [[a, na], [c, nc], [b, nb]] : [[a, na], [b, nb], [c, nc]]) out.push(p[0], p[1], p[2], q[0], q[1], q[2], cm[0][0], cm[0][1], cm[0][2], cm[1]); };
+  for (let si = 0; si < S - 1; si++) for (let ri = 0; ri < n; ri++) { const r2 = (ri + 1) % n, cm = pick(si, ri); if (!cm) continue; tri(rings[si][ri], N[si][ri], rings[si][r2], N[si][r2], rings[si + 1][r2], N[si + 1][r2], cm); tri(rings[si][ri], N[si][ri], rings[si + 1][r2], N[si + 1][r2], rings[si + 1][ri], N[si + 1][ri], cm); }
+  if (caps) for (const si of [0, S - 1]) { const dn = nrm(sub(cen[si], cen[si === 0 ? 1 : S - 2])); for (let ri = 0; ri < n; ri++) tri(cen[si], dn, rings[si][ri], dn, rings[si][(ri + 1) % n], dn, caps); }
+}
+// 球（细分一次的二十面体，80 个面，平滑法线）
+const SPH = (() => { const t = (1 + Math.sqrt(5)) / 2, nz = p => { const l = Math.hypot(p[0], p[1], p[2]); return [p[0] / l, p[1] / l, p[2] / l]; }, v = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]].map(nz), f = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]], out = [];
+  for (const [a, b, c] of f) { const A = v[a], B = v[b], C = v[c], ab = nz([A[0] + B[0], A[1] + B[1], A[2] + B[2]]), bc = nz([B[0] + C[0], B[1] + C[1], B[2] + C[2]]), ca = nz([C[0] + A[0], C[1] + A[1], C[2] + A[2]]); out.push(A, ab, ca, B, bc, ab, C, ca, bc, ab, bc, ca); } return out; })();
+function ball(out, cx, cy, cz, rx, ry, rz, col, mat, jit) { for (const p of SPH) { const k = jit ? 1 + jit * (Math.sin(p[0] * 12.9 + p[1] * 78.2 + p[2] * 37.7 + cx) * 0.5) : 1; out.push(cx + p[0] * rx * k, cy + p[1] * ry * k, cz + p[2] * rz * k, p[0], p[1], p[2], col[0], col[1], col[2], mat); } }
+// 圆柱（沿 Y 轴，侧面平滑）
+function tube(out, cx, y0, y1, cz, r0, r1, seg, col, mat, cap) { for (let k = 0; k < seg; k++) { const a0 = k / seg * 6.2832, a1 = (k + 1) / seg * 6.2832, c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1); const A = [cx + c0 * r0, y0, cz + s0 * r0], B = [cx + c1 * r0, y0, cz + s1 * r0], C = [cx + c1 * r1, y1, cz + s1 * r1], D = [cx + c0 * r1, y1, cz + s0 * r1]; for (const [p, n] of [[A, [c0, 0, s0]], [C, [c1, 0, s1]], [B, [c1, 0, s1]], [A, [c0, 0, s0]], [D, [c0, 0, s0]], [C, [c1, 0, s1]]]) out.push(p[0], p[1], p[2], n[0], n[1], n[2], col[0], col[1], col[2], mat); if (cap) for (const p of [[cx, y1, cz], C, D]) out.push(p[0], p[1], p[2], 0, 1, 0, col[0], col[1], col[2], mat); } }
+
+/* 招牌图集：竖招牌 16 块、横招牌 16 块、一个钟面。字是常见的街铺行当，不是真实商号 */
+const SIGN_V = ['茶餐廳', '珠寶金行', '鐘錶', '藥房', '海鮮酒家', '押', '找換店', '燒臘飯店', '粥麵專家', '涼茶', '電器行', '洋服', '眼鏡', '冰室', '參茸海味', '麻雀耍樂'], SIGN_H = ['大排檔', '士多', '影音器材', '時裝', '皮具', '書局', '琴行', '餅家', '足浴', '酒樓', '手機配件', '相機', '玩具', '花店', '鮮果', '旅館'];
+function makeAtlas() {
+  const c = document.createElement('canvas'); c.width = c.height = 2048; const g = c.getContext('2d'), R = rng(99), font = '"PingFang HK", "PingFang SC", "Noto Sans CJK HK", "Noto Sans CJK SC", "Microsoft JhengHei", "Heiti SC", sans-serif';
+  const pal = [['#7a0c12', '#ffe9a8', '#ff5a4d'], ['#0c2a66', '#e6f4ff', '#57c8ff'], ['#0d4a2c', '#f4ffd8', '#58ffa0'], ['#141414', '#ffd34d', '#ff5ad2'], ['#5a0d4a', '#fff0fb', '#ff8ad8'], ['#f2efe6', '#b01218', '#b01218'], ['#082c3a', '#fff', '#3ad6c4'], ['#3a2206', '#ffe0a0', '#ffa030']];
+  const sign = (x, y, w, h, text, vert) => { const p = pal[(R() * pal.length) | 0]; g.fillStyle = p[0]; g.fillRect(x, y, w, h); g.strokeStyle = p[2]; g.lineWidth = 6; g.shadowColor = p[2]; g.shadowBlur = 14; g.strokeRect(x + 9, y + 9, w - 18, h - 18); g.fillStyle = p[1]; g.shadowColor = p[1]; g.shadowBlur = 10; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const n = text.length; if (vert) { const fs = Math.min(w * 0.72, (h - 40) / n * 0.92); g.font = '900 ' + fs + 'px ' + font; for (let i = 0; i < n; i++) g.fillText(text[i], x + w / 2, y + 20 + (h - 40) * (i + 0.5) / n); } else { const fs = Math.min(h * 0.66, (w - 40) / n * 0.95); g.font = '900 ' + fs + 'px ' + font; for (let i = 0; i < n; i++) g.fillText(text[i], x + 20 + (w - 40) * (i + 0.5) / n, y + h / 2 + 2); } g.shadowBlur = 0; };
+  SIGN_V.forEach((t, i) => sign(i * 128, 0, 128, 512, t, true)); SIGN_H.forEach((t, i) => sign((i & 3) * 512, 512 + (i >> 2) * 128, 512, 128, t, false));
+  // 钟面
+  g.fillStyle = '#f3ead2'; g.beginPath(); g.arc(128, 1152, 120, 0, 7); g.fill(); g.strokeStyle = '#2a2420'; g.lineWidth = 8; g.stroke(); g.fillStyle = '#2a2420'; for (let k = 0; k < 12; k++) { const a = k / 12 * 6.2832; g.fillRect(128 + Math.sin(a) * 100 - 4, 1152 - Math.cos(a) * 100 - 4, 8, 8); } g.lineWidth = 9; g.beginPath(); g.moveTo(128, 1152); g.lineTo(128 + 50, 1152 - 44); g.moveTo(128, 1152); g.lineTo(128 - 20, 1152 - 92); g.stroke();
+  // 银行和枪店的大招牌（虚构的店名）
+  const big = (x, y, w, h, bg, fg, glow, t1, t2) => { g.fillStyle = bg; g.fillRect(x, y, w, h); g.strokeStyle = glow; g.lineWidth = 8; g.shadowColor = glow; g.shadowBlur = 16; g.strokeRect(x + 12, y + 12, w - 24, h - 24); g.fillStyle = fg; g.shadowColor = fg; g.shadowBlur = 10; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 128px ' + font; g.fillText(t1, x + w / 2, y + h * 0.42); g.font = '700 44px ' + font; g.fillText(t2, x + w / 2, y + h * 0.82); g.shadowBlur = 0; };
+  big(256, 1024, 1024, 256, '#0c3a2a', '#ffe9a8', '#ffd34d', '港 灣 銀 行', 'HARBOUR CITY BANK'); big(256, 1280, 1024, 256, '#141414', '#ff5a4d', '#ff5a4d', '槍 械 店', 'GUNS · AMMO');
+  return c;
+}
+// 招牌的图集坐标：[u0, v0, u1, v1]
+const signUV = (vert, k) => vert ? [k * 128 / 2048, 0, (k + 1) * 128 / 2048, 512 / 2048] : [(k & 3) * 512 / 2048, (512 + (k >> 2) * 128) / 2048, ((k & 3) + 1) * 512 / 2048, (640 + (k >> 2) * 128) / 2048];
+(function buildCity() {
+  const V = City.verts, R = rng(20261113), bx = (...a) => box(V, ...a);
+  const quad = (a, b, c, d, n, col, mat) => { for (const p of [a, b, c, a, c, d]) V.push(p[0], p[1], p[2], n[0], n[1], n[2], col[0], col[1], col[2], mat); };
+  // 一块牌子：两面都贴图（背面左右翻转，字才是正的），厚度方向是深色边
+  const signBoard = (cx, cy, cz, ax, az, w, h, uv) => { const hx = ax * w / 2, hz = az * w / 2, nx = -az, nz = ax, t = 0.12, m = 11 + R() * 0.9; for (const s of [1, -1]) { const ox = nx * t * s, oz = nz * t * s, a = [cx - hx * s + ox, cy - h / 2, cz - hz * s + oz], b = [cx + hx * s + ox, cy - h / 2, cz + hz * s + oz], c = [cx + hx * s + ox, cy + h / 2, cz + hz * s + oz], d = [cx - hx * s + ox, cy + h / 2, cz - hz * s + oz], uvs = [[uv[0], uv[3]], [uv[2], uv[3]], [uv[2], uv[1]], [uv[0], uv[1]]], P = [a, b, c, d]; for (const k of [0, 1, 2, 0, 2, 3]) V.push(P[k][0], P[k][1], P[k][2], nx * s, 0, nz * s, uvs[k][0], uvs[k][1], 0, m); }
+    bx(Math.min(cx - hx, cx + hx) - Math.abs(nx) * t, cy + h / 2, Math.min(cz - hz, cz + hz) - Math.abs(nz) * t, Math.max(cx - hx, cx + hx) + Math.abs(nx) * t, cy + h / 2 + 0.08, Math.max(cz - hz, cz + hz) + Math.abs(nz) * t, [0.08, 0.08, 0.09], 9); };
+  const tree = (x, z, s) => { const y = CURB + hillAt(x, z), g = [0.1 + R() * 0.08, 0.26 + R() * 0.14, 0.08 + R() * 0.05]; tube(V, x, y, y + 3 * s, z, 0.2 * s, 0.13 * s, 7, [0.2, 0.15, 0.1], 9); ball(V, x, y + 4.4 * s, z, 2.3 * s, 2 * s, 2.3 * s, g, 5, 0.32); ball(V, x + 1 * s, y + 5.2 * s, z - 0.7 * s, 1.6 * s, 1.5 * s, 1.6 * s, [g[0] * 1.2, g[1] * 1.15, g[2]], 5, 0.5); ball(V, x - 0.9 * s, y + 4.8 * s, z + 0.8 * s, 1.5 * s, 1.3 * s, 1.5 * s, [g[0] * 0.9, g[1] * 0.92, g[2]], 5, 0.5); City.trees.push({ x, z, r: 0.4 * s }); };
+  const WALL = [[0.6, 0.56, 0.5], [0.72, 0.68, 0.6], [0.5, 0.5, 0.52], [0.78, 0.74, 0.66], [0.62, 0.5, 0.42], [0.66, 0.62, 0.52], [0.56, 0.6, 0.56], [0.8, 0.78, 0.74], [0.7, 0.6, 0.56], [0.52, 0.58, 0.64]];
+  const GLASS = [[0.3, 0.44, 0.56], [0.24, 0.34, 0.42], [0.36, 0.5, 0.54], [0.2, 0.28, 0.38], [0.44, 0.48, 0.5], [0.3, 0.4, 0.36]], DK = [0.3, 0.3, 0.3], WH = [0.92, 0.91, 0.88];
+  const wallR = () => WALL[(R() * WALL.length) | 0], glassR = () => GLASS[(R() * GLASS.length) | 0];
+  // ---------- 哪些街区连成一片、各是什么 ----------
+  const cv = City.cv, ch = City.ch; for (let i = 0; i <= GRID; i++) { cv.push(new Array(GRID).fill(false)); ch.push(new Array(GRID).fill(false)); }
+  const GR = [['wk', 0, 1, 0, 1], ['hsr', 0, 1, 2, 3], ['gate', 0, 1, 4, 5], ['mall', 0, 1, 6, 11], ['ferry', 0, 1, 12, 13], ['culture', 2, 3, 12, 13], ['space', 4, 6, 12, 13], ['regent', 7, 7, 12, 13], ['dock', 8, 9, 12, 13], ['aos', 10, 12, 12, 13], ['prom', 13, 13, 12, 13],
+    ['park', 3, 6, 2, 6], ['pen', 4, 6, 11, 11], ['obs', 8, 9, 3, 4], ['museum', 10, 11, 4, 5], ['campus', 11, 12, 1, 3], ['coli', 13, 13, 1, 2], ['hhst', 13, 13, 3, 4]];
+  const kind1 = (i, j) => i === 13 ? (j === 0 ? 'ind' : 'prom') : i === 2 ? (j <= 1 ? 'res' : j === 2 ? 'xiqu' : j <= 4 ? 'res' : j <= 10 ? 'mid' : 'heritage')
+    : i <= 6 ? (j === 0 ? 'res' : i === 6 && j === 8 ? 'isq' : i === 5 && j === 9 ? 'guns' : 'mid')
+    : i <= 9 ? (j <= 4 ? 'mid' : i === 7 && j === 6 ? 'theone' : i === 7 && j === 10 ? 'chung' : i === 7 && j === 8 ? 'bank' : i === 8 && j === 9 ? 'master' : i === 9 && j === 10 ? 'signal' : i === 7 && j === 11 ? 'east' : 'down')
+    : j <= 5 ? 'res' : i === 11 && j === 9 ? 'garden' : 'east';
+  const own = new Array(GRID * GRID).fill(-1); GR.forEach((g, n) => { for (let j = g[3]; j <= g[4]; j++) for (let i = g[1]; i <= g[2]; i++) own[j * GRID + i] = n; });
+  for (let j = 0; j < GRID; j++) for (let i = 0; i < GRID; i++) if (own[j * GRID + i] < 0) { own[j * GRID + i] = GR.length; GR.push([kind1(i, j), i, i, j, j]); }
+  for (const g of GR) { for (let i = g[1] + 1; i <= g[2]; i++) for (let j = g[3]; j <= g[4]; j++) cv[i][j] = true; for (let j = g[3] + 1; j <= g[4]; j++) for (let i = g[1]; i <= g[2]; i++) ch[j][i] = true; }
+  for (let i = 0; i <= GRID; i++) { cv[i][12] = cv[i][13] = true; } for (let i = 0; i < GRID; i++) ch[13][i] = ch[14][i] = true;      // 梳士巴利道以南整片是海旁，不通车
+  for (let j = 4; j < 12; j++) cv[0][j] = true;                                                                                       // 海港城西边直接临海
+  const G = GR.map(g => ({ kind: g[0], i0: g[1], i1: g[2], j0: g[3], j1: g[4] }));
+  for (let j = 0; j < GRID; j++) for (let i = 0; i < GRID; i++) {
+    const wc = cv[i][j], ec = cv[i + 1][j], nc = ch[j][i], sc = ch[j + 1][i], sx0 = wc ? (i === 0 ? -HALF - 6 : XS[i]) : XS[i] + HX[i], sx1 = ec ? (i === GRID - 1 ? HALF + 6 : XS[i + 1]) : XS[i + 1] - HX[i + 1], sz0 = nc ? (j === 0 ? -HALF - 6 : ZS[j]) : ZS[j] + HZ[j], sz1 = sc ? (j === GRID - 1 ? HALF + 6 : ZS[j + 1]) : ZS[j + 1] - HZ[j + 1];
+    City.blocks.push({ i, j, g: G[own[j * GRID + i]], kind: G[own[j * GRID + i]].kind, sx0, sx1, sz0, sz1, x0: wc ? XS[i] : sx0 + SW, x1: ec ? XS[i + 1] : sx1 - SW, z0: nc ? ZS[j] : sz0 + SW, z1: sc ? ZS[j + 1] : sz1 - SW, open: [!wc, !ec, !nc, !sc], boxes: [] });
+  }
+  const cell = (i, j) => City.blocks[j * GRID + i];
+  for (const g of G) { const a = cell(g.i0, g.j0), b = cell(g.i1, g.j1); g.x0 = a.x0; g.z0 = a.z0; g.x1 = b.x1; g.z1 = b.z1; g.open = [a.open[0], b.open[1], a.open[2], b.open[3]]; g.w = g.x1 - g.x0; g.d = g.z1 - g.z0; g.cx = (g.x0 + g.x1) / 2; g.cz = (g.z0 + g.z1) / 2; g.hotE = g.i1 + 1 === 7 && g.open[1]; g.hotW = g.i0 === 7 && g.open[0]; }
+  const addBox = b => { for (let j = rowOf(b.z0 - 1); j <= rowOf(b.z1 + 1); j++) for (let i = colOf(b.x0 - 1); i <= colOf(b.x1 + 1); i++) cell(i, j).boxes.push(b); return b; };
+  const mark = (name, x, z, cx, cz) => City.marks.push({ name, x, z, cx, cz });
+  // ---------- 盖楼的工具 ----------
+  // 一栋楼：主体 + 女儿墙 + 屋顶设备；临街的立面挂招牌（弥敦道两侧最密）
+  const put = (g, ax, az, bxx, bz, h, col, mat, signs, y0) => {
+    const seed = 0.05 + R() * 0.9; bx(ax, y0 || CURB, az, bxx, h, bz, col, mat + seed * 0.98, [0.32, 0.32, 0.33], 9); addBox({ x0: ax, z0: az, x1: bxx, z1: bz, h });
+    bx(ax, h, az, bxx, h + 0.9, az + 0.3, col, 9); bx(ax, h, bz - 0.3, bxx, h + 0.9, bz, col, 9); bx(ax, h, az, ax + 0.3, h + 0.9, bz, col, 9); bx(bxx - 0.3, h, az, bxx, h + 0.9, bz, col, 9);
+    if (bxx - ax > 9 && bz - az > 9) for (let k = 0; k < 3; k++) if (R() < 0.7) { const w = 1.5 + R() * 3, px = lerp(ax + 1.5, bxx - 5, R()), pz = lerp(az + 1.5, bz - 5, R()); if (R() < 0.4) tube(V, px + 1, h, h + 2.2 + R(), pz + 1, 1.1, 1.1, 10, [0.42, 0.4, 0.36], 9, true); else bx(px, h, pz, px + w, h + 1 + R() * 1.6, pz + w * 0.7, [0.5, 0.5, 0.5], 10); }
+    if (!signs) return;
+    for (const face of [0, 1, 2, 3]) { const onX = face < 2, edge = [ax, bxx, az, bz][face], lim = [g.x0, g.x1, g.z0, g.z1][face]; if (!g.open[face] || Math.abs(edge - lim) > 4) continue;
+      const dir = face === 0 || face === 2 ? -1 : 1, hot = onX && ((face === 1 && g.hotE) || (face === 0 && g.hotW)), lo = onX ? az : ax, hi = onX ? bz : bxx, per = hot ? 4 : R() < signs ? 1 + ((R() * 2) | 0) : 0, cnt = per ? Math.min(40, Math.max(1, Math.round(per * (hi - lo) / 30))) : 0;
+      for (let k = 0; k < cnt; k++) { const t = lerp(lo + 2, hi - 2, R()), vert = R() < 0.62; if (vert) { const w = 1.5 + R() * 0.5, hh = w * 4, out = 1.2 + R() * (hot ? 4.4 : 2.2), y = 6.5 + R() * Math.min(16, Math.max(1, h - 14)); if (y + hh / 2 > h) continue; const cx = onX ? edge + dir * (out + w / 2) : t, cz = onX ? t : edge + dir * (out + w / 2); signBoard(cx, y + hh / 2, cz, onX ? 1 : 0, onX ? 0 : 1, w, hh, signUV(true, (R() * 16) | 0)); bx(onX ? Math.min(edge, cx) : t - 0.04, y + hh - 0.3, onX ? t - 0.04 : Math.min(edge, cz), onX ? Math.max(edge, cx) : t + 0.04, y + hh - 0.22, onX ? t + 0.04 : Math.max(edge, cz), [0.1, 0.1, 0.1], 9); }
+        else { const w = 4.6 + R() * 1.4, hh = w / 4, y = 4.7 + hh / 2 + (R() < 0.3 ? 3.4 : 0); signBoard(onX ? edge + dir * 0.25 : t, y, onX ? t : edge + dir * 0.25, onX ? 0 : 1, onX ? 1 : 0, w, hh, signUV(false, (R() * 16) | 0)); } } }
+  };
+  // 一栋分三段往上收的玻璃塔
+  const tower = (ax, az, bxx, bz, y0, h, gc) => { const s = Math.min(bxx - ax, bz - az) * 0.07, m = R() * 0.2; bx(ax, y0, az, bxx, y0 + (h - y0) * 0.7, bz, gc, 6.3 + m, DK, 9); bx(ax + s, y0 + (h - y0) * 0.7, az + s, bxx - s, y0 + (h - y0) * 0.9, bz - s, gc, 6.5 + m, DK, 9); bx(ax + 2 * s, y0 + (h - y0) * 0.9, az + 2 * s, bxx - 2 * s, h, bz - 2 * s, gc, 6.7 + m, DK, 9); if (h > 240) tube(V, (ax + bxx) / 2, h, h + 36, (az + bz) / 2, 1.2, 0.2, 8, [0.7, 0.7, 0.72], 13); };
+  // 把一块地切成若干小地块，每块调用一次
+  const lots = (g, tw, td, gap, fn, m) => { m = m === undefined ? 1 : m; const w = g.x1 - g.x0 - 2 * m, d = g.z1 - g.z0 - 2 * m, nx = Math.max(1, Math.round(w / tw)), nz = Math.max(1, Math.round(d / td)), cw = (w - gap * (nx - 1)) / nx, cd = (d - gap * (nz - 1)) / nz; for (let a = 0; a < nx; a++) for (let b = 0; b < nz; b++) fn(g.x0 + m + a * (cw + gap), g.z0 + m + b * (cd + gap), cw, cd); };
+  // 斜屋顶：顶面从西边的 ya 斜到东边的 yb
+  const wedge = (ax, az, bxx, bz, y0, ya, yb, col, mat) => { const n = [-(yb - ya), bxx - ax, 0], l = Math.hypot(n[0], n[1]); quad([ax, ya, bz], [bxx, yb, bz], [bxx, yb, az], [ax, ya, az], [n[0] / l, n[1] / l, 0], col, mat); quad([ax, y0, bz], [bxx, y0, bz], [bxx, yb, bz], [ax, ya, bz], [0, 0, 1], col, mat); quad([bxx, y0, az], [ax, y0, az], [ax, ya, az], [bxx, yb, az], [0, 0, -1], col, mat); quad([bxx, y0, bz], [bxx, y0, az], [bxx, yb, az], [bxx, yb, bz], [1, 0, 0], col, mat); if (ya > y0) quad([ax, y0, az], [ax, y0, bz], [ax, ya, bz], [ax, ya, az], [-1, 0, 0], col, mat); };
+  // 带起伏的草地
+  const lawn = (g, m) => { const ax = g.x0 - m, bxx = g.x1 + m, az = g.z0 - m, bz = g.z1 + m, nx = Math.max(1, Math.round((bxx - ax) / 8)), nz = Math.max(1, Math.round((bz - az) / 8)), Y = (x, z) => CURB + 0.04 + hillAt(x, z), col = [0.24, 0.42, 0.18];
+    const N = (x, z) => { const dx = Y(x + 1, z) - Y(x - 1, z), dz = Y(x, z + 1) - Y(x, z - 1), l = Math.hypot(dx / 2, 1, dz / 2); return [-dx / 2 / l, 1 / l, -dz / 2 / l]; };
+    for (let a = 0; a < nx; a++) for (let b = 0; b < nz; b++) { const xa = lerp(ax, bxx, a / nx), xb = lerp(ax, bxx, (a + 1) / nx), za = lerp(az, bz, b / nz), zb = lerp(az, bz, (b + 1) / nz); for (const [x, z] of [[xa, zb], [xb, zb], [xb, za], [xa, zb], [xb, za], [xa, za]]) { const n = N(x, z); V.push(x, Y(x, z), z, n[0], n[1], n[2], col[0], col[1], col[2], 4); } } };
+  const hill = (g, h, m, inset, zcut) => City.hills.push({ x0: g.x0 + inset, x1: g.x1 - inset, z0: g.z0 + inset, z1: g.z1 - inset - (zcut || 0), h, m, s: R() * 6 });
+  const groundTop = (x, z) => CURB + hillAt(x, z);
+  const bench = (x, z, alongX) => { const ax = x - (alongX ? 1.5 : 0.3), az = z - (alongX ? 0.3 : 1.5), bxx = x + (alongX ? 1.5 : 0.3), bz = z + (alongX ? 0.3 : 1.5); bx(ax, CURB, az, bxx, CURB + 0.45, bz, [0.4, 0.3, 0.22], 9); addBox({ x0: ax, z0: az, x1: bxx, z1: bz, h: CURB + 0.45, thin: true }); };
+  const lampPost = (lx, lz, dx, dz) => { City.posts.push({ x: lx, z: lz, r: 0.14 }); tube(V, lx, CURB, 7.2, lz, 0.1, 0.06, 6, [0.2, 0.21, 0.22], 9); bx(lx - 0.05 + Math.min(0, dx * 1.7), 7.1, lz - 0.05 + Math.min(0, dz * 1.7), lx + 0.05 + Math.max(0, dx * 1.7), 7.2, lz + 0.05 + Math.max(0, dz * 1.7), [0.2, 0.21, 0.22], 9); bx(lx + dx * 1.6 - 0.3, 6.96, lz + dz * 1.6 - 0.18, lx + dx * 1.6 + 0.3, 7.08, lz + dz * 1.6 + 0.18, [1, 0.86, 0.6], 7); City.lamps.push([lx + dx * 1.6, lz + dz * 1.6]); };
+  // 海旁一条：一排树、长椅和路灯
+  const strip = g => { for (let x = g.x0 + 8; x < g.x1 - 4; x += 14) tree(x, g.z1 - 15, 1); for (let x = g.x0 + 15; x < g.x1 - 4; x += 28) { bench(x, g.z1 - 5, true); lampPost(x + 7, g.z1 - 8, 0, 1); } };
+  // ---------- 各种街区 ----------
+  const gen = g => { const { x0, x1, z0, z1, cx, cz, w, d, kind } = g;
+    if (kind === 'mid' || kind === 'guns') { lots(g, 15.6, 31, 0.7, (x, z, cw, cd) => { if (kind === 'mid' && R() < 0.05) { tree(x + cw / 2, z + cd / 2, 1); return; } put(g, x, z, x + cw, z + cd, 16 + R() * 34, wallR(), 1, 0.6); });
+      if (kind === 'guns') { signBoard(cx, 5.3, z1 - 0.7, 1, 0, 10, 2.5, [256 / 2048, 1280 / 2048, 1280 / 2048, 1536 / 2048]); City.shop = { x: cx, z: z1 + 1.2 }; mark('枪店', cx, z1 + 1.5, cx, z1 - 10); } }
+    else if (kind === 'bank') {                            // 银行：临街一层是敞开的营业厅，里面有柜台、柜员、保安和金库门
+      const hz0 = cz - 9, hz1 = cz + 9, hx1 = x0 + 14, h = 96, c = [0.8, 0.78, 0.72]; put(g, x0 + 1, z0 + 1, x1 - 1, hz0, h, c, 1, 0.5); put(g, x0 + 1, hz1, x1 - 1, z1 - 1, h, c, 1, 0.5); put(g, hx1, hz0, x1 - 1, hz1, h, c, 1, 0);
+      bx(x0 + 1, 5.4, hz0, hx1, h, hz1, c, 1.47, DK, 9); bx(x0 + 1, CURB, hz0, hx1, CURB + 0.03, hz1, [0.78, 0.76, 0.72], 9); bx(x0 + 1.5, 5.25, hz0 + 1, hx1 - 1, 5.4, hz1 - 1, [1, 0.92, 0.75], 7);
+      bx(x0 + 9, CURB, hz0 + 1, x0 + 9.8, 1.15, hz1 - 1, [0.3, 0.2, 0.14], 9, [0.82, 0.8, 0.76], 9); addBox({ x0: x0 + 9, z0: hz0 + 1, x1: x0 + 9.8, z1: hz1 - 1, h: 1.15 }); bx(hx1 - 0.5, CURB, cz - 2.2, hx1, 3.6, cz + 2.2, [0.25, 0.26, 0.28], 9); ball(V, hx1 - 0.5, 1.9, cz, 0.35, 1.5, 1.5, [0.7, 0.72, 0.75], 13);
+      for (const zz of [hz0 + 0.5, hz1 - 0.5]) tube(V, x0 + 1.4, CURB, 5.4, zz, 0.45, 0.45, 10, [0.86, 0.84, 0.8], 9, true);
+      signBoard(x0 + 0.75, 7.3, cz, 0, 1, 16, 4, [256 / 2048, 1024 / 2048, 1280 / 2048, 1280 / 2048]);
+      City.bank = { x0: x0 + 1, x1: hx1, z0: hz0, z1: hz1, tellers: [[x0 + 11, cz - 5], [x0 + 11, cz], [x0 + 11, cz + 5]], guard: [x0 + 2.6, cz + 7] }; mark('港湾银行', x0 - 1.6, cz + 3, x0 + 8, cz); }
+    else if (kind === 'down') { if (w > 50 && d > 50 && R() < 0.3) { put(g, x0 + 2, z0 + 2, x1 - 2, z1 - 2, 16 + R() * 6, wallR(), 1, 0.8); const sI = Math.min(w, d) * 0.2; tower(x0 + sI, z0 + sI, x1 - sI, z1 - sI, 16, 110 + R() * 90, glassR()); }
+      else { const nat = g.hotE || g.hotW; lots(g, 21, 31, 1, (x, z, cw, cd) => { const h = (nat ? 26 : 34) + R() * (nat ? 46 : 90), gl = R() < (nat ? 0.15 : 0.5); put(g, x, z, x + cw, z + cd, h, gl ? glassR() : wallR(), gl ? 6 : 1, 0.75); }); } }
+    else if (kind === 'res') { put(g, x0 + 2, z0 + 2, x1 - 2, z1 - 2, 9, wallR(), 1, 0.3); const c = wallR(); lots({ x0: x0 + 5, x1: x1 - 5, z0: z0 + 5, z1: z1 - 5 }, 30, 30, 8, (x, z, cw, cd) => { const s = Math.min(cw, cd, 22), ax = x + (cw - s) / 2, az = z + (cd - s) / 2, h = 70 + R() * 55; bx(ax, 9, az, ax + s, h, az + s, c, 1 + (0.05 + R() * 0.9) * 0.98, DK, 9); bx(ax + s * 0.3, h, az + s * 0.3, ax + s * 0.7, h + 3, az + s * 0.7, [0.5, 0.5, 0.5], 9); }, 0); }
+    else if (kind === 'east') { const gc = [[0.42, 0.3, 0.22], [0.3, 0.34, 0.38], [0.36, 0.3, 0.26], [0.26, 0.36, 0.42]][(R() * 4) | 0]; put(g, x0 + 3, z0 + 3, x1 - 3, z1 - 3, 13, wallR(), 1, 0.5); const lng = w > d; bx(x0 + (lng ? 7 : w * 0.26), 13, z0 + (lng ? d * 0.26 : 7), x1 - (lng ? 7 : w * 0.26), 52 + R() * 44, z1 - (lng ? d * 0.26 : 7), gc, 6 + R() * 0.9, DK, 9); }
+    else if (kind === 'isq' || kind === 'master' || kind === 'theone') { const isq = kind !== 'master', ph = kind === 'isq' ? 30 : kind === 'theone' ? 24 : 18, gc = GLASS[kind === 'master' ? 1 : kind === 'isq' ? 0 : 2], sI = Math.min(w, d) * 0.2; put(g, x0 + 2, z0 + 2, x1 - 2, z1 - 2, ph, isq ? gc : WALL[7], isq ? 6 : 1, 0.9); tower(x0 + sI, z0 + sI, x1 - sI, z1 - sI, ph, kind === 'master' ? 261 : kind === 'isq' ? 135 : 105, gc); mark(kind === 'master' ? '名铸' : kind === 'isq' ? '北京道商场' : 'The ONE', g.hotE ? x1 + 1.6 : g.hotW ? x0 - 1.6 : cx, g.hotE || g.hotW ? cz : z1 + 1.6, cx, cz); }
+    else if (kind === 'chung') { put(g, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 14, WALL[1], 1, 1); const c = [0.7, 0.66, 0.58]; lots({ x0: x0 + 3, x1: x1 - 3, z0: z0 + 3, z1: z1 - 3 }, 22, 60, 5, (x, z, cw, cd) => bx(x, 14, z, x + cw, 56, z + cd, c, 1 + (0.05 + R() * 0.9) * 0.98, DK, 9), 0); mark('重庆大厦', x0 - 1.6, cz, cx, cz); }
+    else if (kind === 'xiqu') { const c = [0.8, 0.78, 0.72], r = 7; bx(x0 + 5 + r, CURB, z0 + 5, x1 - 5 - r, 40, z1 - 5, c, 10, [0.34, 0.34, 0.36], 9); bx(x0 + 5, CURB, z0 + 5 + r, x1 - 5, 40, z1 - 5 - r, c, 10, [0.34, 0.34, 0.36], 9); for (const [tx, tz] of [[x0 + 5 + r, z0 + 5 + r], [x1 - 5 - r, z0 + 5 + r], [x0 + 5 + r, z1 - 5 - r], [x1 - 5 - r, z1 - 5 - r]]) tube(V, tx, CURB, 40, tz, r, r, 12, c, 10, true);
+      bx(cx - 9, CURB, z0 + 4.6, cx + 9, 16, z0 + 5.2, [0.5, 0.2, 0.14], 9); bx(cx - 7, CURB, z0 + 4.3, cx + 7, 13, z0 + 4.7, GLASS[0], 6.4); addBox({ x0: x0 + 5, z0: z0 + 5, x1: x1 - 5, z1: z1 - 5, h: 40 }); mark('戏曲中心', cx, z0 - 1.6, cx, cz); }
+    else if (kind === 'heritage') { const fx = cx - 32, fz = cz - 32; put(g, fx + 10, fz + 10, fx + 54, fz + 34, 13, [0.9, 0.88, 0.82], 1); put(g, fx + 10, fz + 34, fx + 24, fz + 50, 10, [0.9, 0.88, 0.82], 1); bx(fx + 28, 13, fz + 16, fx + 36, 20, fz + 24, [0.9, 0.88, 0.82], 9); tube(V, fx + 32, 20, 24, fz + 20, 4.4, 0.3, 8, [0.5, 0.2, 0.16], 9, true);
+      for (const [tx, tz] of [[5, 5], [32, 5], [59, 5], [5, 56], [34, 50], [50, 44], [59, 56]]) tree(fx + tx, fz + tz, 1.2); mark('1881', cx, z1 + 1.6, cx, cz); }
+    else if (kind === 'signal') { hill(g, 9, 16, 1); lawn(g, 1); const y = groundTop(cx, cz), c = [0.6, 0.27, 0.2]; bx(cx - 3, y - 1, cz - 3, cx + 3, y + 15, cz + 3, c, 10, [0.72, 0.7, 0.66], 9); tube(V, cx, y + 15, y + 19, cz, 3.2, 1.2, 8, [0.3, 0.42, 0.4], 9, true); addBox({ x0: cx - 3, z0: cz - 3, x1: cx + 3, z1: cz + 3, h: y + 19 }); for (let k = 0; k < 12; k++) { const a = k / 12 * 6.283, rr = 14 + R() * 12; tree(clamp(cx + Math.cos(a) * rr, x0 + 3, x1 - 3), clamp(cz + Math.sin(a) * rr, z0 + 3, z1 - 3), 0.9 + R() * 0.4); } mark('讯号山', cx, z1 + 1.6, cx, cz); }
+    else if (kind === 'garden') { lawn(g, 1); for (let k = 0; k < 14; k++) tree(lerp(x0 + 3, x1 - 3, R()), lerp(z0 + 3, z1 - 3, R()), 0.9 + R() * 0.6); bx(cx - 1.5, CURB, z0, cx + 1.5, CURB + 0.06, z1, [0.6, 0.58, 0.54], 3); }
+    else if (kind === 'ind') lots(g, 30, 60, 4, (x, z, cw, cd) => put(g, x, z, x + cw, z + cd, 9 + R() * 8, [[0.36, 0.44, 0.5], [0.55, 0.3, 0.24], [0.5, 0.5, 0.46], [0.3, 0.42, 0.36]][(R() * 4) | 0], 10), 3);
+    else if (kind === 'prom') { const ns = d > w; if (ns) { for (let z = z0 + 5; z < z1 - 3; z += 9.4) tree(x0 + 5, z, 0.9); for (let z = z0 + 12; z < z1 - 3; z += 19) bench(x1 - 6, z, false); } else { for (let x = x0 + 5; x < x1 - 3; x += 9.4) tree(x, z0 + 5, 0.9); for (let x = x0 + 12; x < x1 - 3; x += 19) bench(x, z1 - 6, true); } if (w > 40 && d > 50 && R() < 0.5) put(g, cx - 10, cz - 8, cx + 10, cz + 8, 6 + R() * 3, [0.85, 0.84, 0.8], 6); }
+    else if (kind === 'wk') {                              // 西九龙：商场平台上的摩天楼群。最高的蓝色玻璃塔是全城第一高，旁边是带空中缺口的白色大板楼和棕色的住宅塔
+      put(g, x0 + 3, z0 + 3, x1 - 3, z1 - 3, 14, WALL[7], 1, 0.4); tower(x0 + 12, z1 - 62, x0 + 58, z1 - 16, 14, 484, [0.16, 0.3, 0.56]);
+      const hs = [0.7, 0.78, 0.76]; bx(x1 - 44, 14, z0 + 12, x1 - 18, 252, z0 + 104, hs, 6.35, [0.9, 0.9, 0.9], 9); bx(x1 - 46, 252, z0 + 10, x1 - 16, 256, z0 + 106, [0.92, 0.92, 0.9], 9); for (const zz of [z0 + 34, z0 + 58, z0 + 82]) { bx(x1 - 44.3, 70, zz - 3, x1 - 17.7, 110, zz + 3, [0.1, 0.12, 0.14], 9); bx(x1 - 44.3, 160, zz - 3, x1 - 17.7, 200, zz + 3, [0.1, 0.12, 0.14], 9); }
+      const br = [0.46, 0.27, 0.2]; bx(x0 + 74, 14, z0 + 14, x0 + 96, 231, z0 + 40, br, 1.4, DK, 9); bx(x0 + 74, 14, z0 + 46, x0 + 96, 231, z0 + 72, br, 1.5, DK, 9); bx(x0 + 74, 196, z0 + 40, x0 + 96, 231, z0 + 46, br, 1.45, DK, 9);
+      for (const tz of [z0 + 14, z0 + 58]) tower(x0 + 16, tz, x0 + 44, tz + 32, 14, 270, [0.3, 0.4, 0.5]); bx(x1 - 44, 14, z1 - 50, x1 - 18, 210, z1 - 18, [0.74, 0.76, 0.8], 1.6, DK, 9);
+      mark('环球贸易广场', x1 + 1.6, z1 - 40, x0 + 35, z1 - 40); }
+    else if (kind === 'hsr') {                             // 高铁站：一片从北向南越掀越高的弧形大屋顶
+      const hw = w / 2 - 8, rings = [], n = 12; for (let k = 0; k <= n; k++) { const t = k / n, z = lerp(z0 + 8, z1 - 10, t), H = 7 + 22 * t * t, wd = hw * (0.82 + 0.18 * Math.sin(t * Math.PI)), ring = []; for (let q = 0; q <= 8; q++) { const u = q / 4 - 1; ring.push([cx + u * wd, CURB + 1.2 + H * Math.pow(1 - u * u, 0.6), z]); } rings.push(ring); }
+      loft(V, rings, () => [[0.8, 0.83, 0.85], 13], null); bx(cx - hw * 0.84, CURB, z1 - 10.6, cx + hw * 0.84, 22, z1 - 10, GLASS[0], 6.4); bx(cx - hw, CURB, z0 + 8, cx + hw, 2.4, z1 - 10, [0.7, 0.7, 0.68], 9); addBox({ x0: cx - hw, z0: z0 + 8, x1: cx + hw, z1: z1 - 10, h: 30 });
+      for (let x = x0 + 8; x < x1 - 4; x += 12) tree(x, z1 - 4, 1); mark('高铁站', cx, z1 + 1.6, cx, cz); }
+    else if (kind === 'gate' || kind === 'mall') {         // 海港城：贴着海的长条商场，上面压着酒店和写字楼；南端的码头伸进海里，泊着邮轮
+      put(g, x0, z0 + 2, x1 - 2, z1 - 2, 21, [0.8, 0.78, 0.74], 1, 0.9); const n = Math.max(1, Math.round(d / (kind === 'gate' ? 60 : 105))); for (let k = 0; k < n; k++) { const zc = z0 + d * (k + 0.5) / n, tw = kind === 'gate' ? 20 : 26; const gold = kind === 'gate' && k < n / 2; bx(cx - 32, 21, zc - tw, cx + 32, gold ? 58 + R() * 12 : (kind === 'gate' ? 110 : 64) + R() * 50, zc + tw, gold ? [0.62, 0.46, 0.18] : kind === 'gate' ? [0.14, 0.36, 0.33] : glassR(), 6 + R() * 0.9, DK, 9); }
+      if (kind === 'mall') { mark('海港城', x1 + 1.6, cz, cx, cz); const z = z1 - 60, A = HALF + 18, xa = -A - 190, xb = -A; bx(xa, -3, z - 22, xb, CURB, z + 22, [0.55, 0.54, 0.52], 3); bx(xa + 10, CURB, z - 14, xb - 6, 14, z + 14, [0.8, 0.79, 0.76], 1.5, [0.34, 0.34, 0.36], 9);
+        const sz = z + 50, hull = [0.93, 0.93, 0.91], rings = []; for (let k = 0; k <= 12; k++) { const t = k / 12, x = lerp(xa - 30, xb - 10, t), wd = 15 * Math.pow(Math.sin(Math.PI * Math.min(1, 0.12 + t * 0.95)), 0.45) * (t > 0.92 ? 0.8 : 1); rings.push([[x, -1.5, sz - wd * 0.6], [x, 4, sz - wd], [x, 11, sz - wd * 1.02], [x, 11, sz + wd * 1.02], [x, 4, sz + wd], [x, -1.5, sz + wd * 0.6]]); } loft(V, rings, (si, ri) => [ri === 0 || ri === 4 ? [0.1, 0.14, 0.24] : hull, 9], [hull, 9]);
+        for (let q = 0; q < 5; q++) bx(xa + 4 + q * 5, 11 + q * 3.2, sz - 12 + q * 0.8, xb - 40 - q * 9, 14.2 + q * 3.2, sz + 12 - q * 0.8, hull, 1.3 + q * 0.1, [0.85, 0.85, 0.84], 9); tube(V, xa + 90, 27, 37, sz, 4, 3, 10, [0.75, 0.16, 0.12], 9, true); mark('邮轮码头', x1 + 1.6, z, cx, z);
+        const z2 = z - 130; bx(xa + 60, -3, z2 - 13, xb, CURB, z2 + 13, [0.55, 0.54, 0.52], 3); bx(xa + 70, CURB, z2 - 9, xb - 6, 9, z2 + 9, [0.9, 0.9, 0.88], 1.5, [0.34, 0.34, 0.36], 9); ball(V, xa + 74, 9, z2, 12, 6, 9, [0.92, 0.92, 0.9], 13); } }
+    else if (kind === 'ferry') {                           // 天星码头、巴士总站和钟楼
+      const px = x0 + 6, pz = z0 + 52; put(g, px, pz, px + 46, pz + 24, 8, [0.88, 0.88, 0.82], 10); bx(px - 0.4, 6.2, pz - 0.4, px + 46.4, 7.2, pz + 24.4, [0.12, 0.36, 0.22], 9); bx(px + 18, 8, pz + 8, px + 24, 14, pz + 14, [0.88, 0.88, 0.82], 9); tube(V, px + 21, 14, 17, pz + 11, 2.4, 0.2, 8, [0.12, 0.36, 0.22], 9, true);
+      for (let k = 0; k < 5; k++) { bx(x0 + 10 + k * 16, CURB, z0 + 12, x0 + 22 + k * 16, CURB + 3.2, z0 + 12.4, [0.3, 0.32, 0.34], 9); bx(x0 + 9 + k * 16, CURB + 3.2, z0 + 10, x0 + 23 + k * 16, CURB + 3.4, z0 + 15, [0.75, 0.2, 0.16], 9); }
+      const tx = x1 - 34, tz = z0 + 70; bx(tx - 5, CURB, tz - 5, tx + 5, 2.2, tz + 5, [0.62, 0.6, 0.56], 9); bx(tx - 3.4, 2.2, tz - 3.4, tx + 3.4, 30, tz + 3.4, [0.56, 0.24, 0.18], 10, [0.6, 0.58, 0.54], 9); for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) bx(tx + dx * 3.4 - 0.45, 2.2, tz + dz * 3.4 - 0.45, tx + dx * 3.4 + 0.45, 30, tz + dz * 3.4 + 0.45, [0.72, 0.7, 0.66], 9);
+      bx(tx - 3.9, 30, tz - 3.9, tx + 3.9, 31, tz + 3.9, [0.72, 0.7, 0.66], 9); bx(tx - 3, 31, tz - 3, tx + 3, 37.5, tz + 3, [0.6, 0.27, 0.2], 10, [0.6, 0.58, 0.54], 9); const cu = [0, 1024 / 2048, 256 / 2048, 1280 / 2048];
+      signBoard(tx, 34.2, tz + 3.0, 1, 0, 4.4, 4.4, cu); signBoard(tx, 34.2, tz - 3.0, 1, 0, 4.4, 4.4, cu); signBoard(tx + 3.0, 34.2, tz, 0, 1, 4.4, 4.4, cu); signBoard(tx - 3.0, 34.2, tz, 0, 1, 4.4, 4.4, cu);
+      bx(tx - 3.4, 37.5, tz - 3.4, tx + 3.4, 38.2, tz + 3.4, [0.72, 0.7, 0.66], 9); tube(V, tx, 38.2, 42, tz, 2.6, 1.6, 8, [0.3, 0.42, 0.4], 9, true); tube(V, tx, 42, 45.5, tz, 1.2, 0.1, 8, [0.3, 0.42, 0.4], 9, true); addBox({ x0: tx - 5, z0: tz - 5, x1: tx + 5, z1: tz + 5, h: 44 });
+      for (const [ax, az] of [[-22, -20], [22, -20], [-22, 22], [22, 22], [-10, -20], [10, -20]]) tree(tx + ax, tz + az, 1.1); strip(g); mark('钟楼', tx, tz - 26, tx, tz); mark('天星码头', px + 52, pz + 12, px + 23, pz + 12); City.spawn = [tx - 6, tz - 30]; }
+    else if (kind === 'culture') {                         // 文化中心：没有窗的瓷砖大楼，屋顶像滑梯一样斜上去
+      const c = [0.82, 0.74, 0.68], ax = x0 + 10, bxx = x1 - 12, az = z0 + 14, bz = z0 + 62; bx(ax, CURB, az, bxx, 13, bz, c, 10); wedge(ax, az, bxx, bz, 13, 14, 36, c, 10); addBox({ x0: ax, z0: az, x1: bxx, z1: bz, h: 36 }); put(g, ax + 6, bz, ax + 60, bz + 16, 9, c, 10); bx(bxx - 30, CURB, az - 0.5, bxx - 6, 7, az, GLASS[0], 6.4);
+      for (let x = x0 + 6; x < x1 - 4; x += 11) tree(x, z0 + 6, 1); strip(g); mark('文化中心', cx, z0 - 1.6, cx, z0 + 40); }
+    else if (kind === 'space') {                           // 太空馆的白色圆顶，旁边是艺术馆
+      const dx = x0 + 42, dz = z0 + 40; tube(V, dx, CURB, 5, dz, 21, 21, 20, [0.86, 0.86, 0.84], 9, true); ball(V, dx, 5, dz, 20, 17, 20, [0.93, 0.93, 0.9], 13); addBox({ x0: dx - 19, z0: dz - 19, x1: dx + 19, z1: dz + 19, h: 22 });
+      put(g, x0 + 84, z0 + 16, x1 - 14, z0 + 60, 24, [0.5, 0.56, 0.68], 10); bx(x0 + 88, 24, z0 + 18, x1 - 18, 31, z0 + 50, GLASS[0], 6.4, DK, 9); bx(x0 + 96, 4, z0 + 60, x0 + 124, 20, z0 + 61, GLASS[2], 6.4, DK, 9); for (const tx of [x0 + 134, x0 + 143]) { tube(V, tx, CURB, 25, z0 + 63, 4.6, 4.6, 14, WH, 9, true); City.trees.push({ x: tx, z: z0 + 63, r: 4.6 }); } for (let x = x0 + 6; x < x1 - 4; x += 12) tree(x, z0 + 6, 1); strip(g); mark('太空馆', dx, z0 - 1.6, dx, dz); mark('艺术馆', x0 + 120, z0 + 70, x0 + 120, z0 + 40); }
+    else if (kind === 'regent') { const gc = [0.42, 0.3, 0.22]; put(g, x0 + 6, z0 + 6, x1 - 6, z0 + 62, 13, WALL[3], 1, 0.3); bx(x0 + 12, 13, z0 + 14, x1 - 12, 78, z0 + 44, gc, 6.4, DK, 9); strip(g); }
+    else if (kind === 'dock') {                            // 海旁的艺术商场和旁边那栋 280 多米的高塔
+      put(g, x0 + 8, z0 + 8, x0 + 88, z0 + 64, 34, [0.5, 0.4, 0.3], 1, 0.4); put(g, x0 + 96, z0 + 8, x1 - 8, z0 + 64, 20, WALL[7], 1, 0.4); tower(x0 + 104, z0 + 14, x1 - 16, z0 + 58, 20, 284, GLASS[1]); strip(g); mark('海滨高塔', cx, z0 + 76, x0 + 125, z0 + 36); }
+    else if (kind === 'aos') {                             // 星光大道：海边的花园长廊，中间立着一尊功夫铜像
+      for (let k = 0; k < 26; k++) tree(lerp(x0 + 4, x1 - 4, R()), lerp(z0 + 5, z1 - 26, R()), 0.9 + R() * 0.5); strip(g); put(g, x0 + 30, z0 + 10, x0 + 70, z0 + 34, 7, [0.85, 0.84, 0.8], 6);
+      const sx = cx, sz = z1 - 12, br = [0.36, 0.26, 0.14]; bx(sx - 1.3, CURB, sz - 1.3, sx + 1.3, 1.4, sz + 1.3, [0.3, 0.3, 0.32], 9); addBox({ x0: sx - 1.3, z0: sz - 1.3, x1: sx + 1.3, z1: sz + 1.3, h: 4 });
+      bx(sx - 0.5, 1.4, sz - 0.14, sx - 0.16, 2.3, sz + 0.14, br, 13); bx(sx + 0.2, 1.4, sz - 0.14, sx + 0.62, 2.3, sz + 0.14, br, 13); bx(sx - 0.34, 2.3, sz - 0.16, sx + 0.34, 3.1, sz + 0.16, br, 13); ball(V, sx, 3.32, sz, 0.17, 0.2, 0.18, br, 13); bx(sx + 0.3, 2.8, sz - 0.1, sx + 1.0, 2.98, sz + 0.1, br, 13); bx(sx - 0.9, 2.6, sz - 0.1, sx - 0.3, 2.78, sz + 0.1, br, 13);
+      mark('星光大道', sx, sz - 6, sx, sz); }
+    else if (kind === 'park') {                            // 九龙公园：一大片隆起的草坡和树林，南边有水池，东南角是清真寺
+      hill(g, 10, 34, 6, 120); lawn(g, 1); for (let k = 0; k < 200; k++) { const x = lerp(x0 + 4, x1 - 4, R()), z = lerp(z0 + 4, z1 - 4, R()); if ((x > x1 - 48 && z > z1 - 48) || (x > x0 + 34 && x < x0 + 104 && z > z1 - 96 && z < z1 - 50)) continue; tree(x, z, 0.9 + R() * 0.8); }
+      bx(x0 + 40, CURB, z1 - 90, x0 + 98, CURB + 0.12, z1 - 56, [0.1, 0.26, 0.34], 12); bx(x0 + 38, CURB, z1 - 92, x0 + 100, CURB + 0.2, z1 - 90, [0.6, 0.58, 0.54], 9); bx(x0 + 38, CURB, z1 - 56, x0 + 100, CURB + 0.2, z1 - 54, [0.6, 0.58, 0.54], 9);
+      const mx = x1 - 40, mz = z1 - 40; put(g, mx, mz, mx + 32, mz + 32, 11, WH, 1); ball(V, mx + 16, 11, mz + 16, 7, 7, 7, WH, 13); for (const [ax, az] of [[0, 0], [32, 0], [0, 32], [32, 32]]) { tube(V, mx + ax, CURB, 20, mz + az, 1, 0.8, 8, WH, 9); ball(V, mx + ax, 20.4, mz + az, 1.3, 1.6, 1.3, WH, 13); }
+      mark('九龙公园', x0 + 70, z1 + 1.6, x0 + 70, z1 - 80); mark('清真寺', x1 + 1.6, mz + 16, mx + 16, mz + 16); mark('公园山顶', cx, cz - 60, cx, cz - 120); }
+    else if (kind === 'pen') {                             // 半岛酒店：米色 U 形主楼朝着海，后面立着一栋高塔；西边是另一栋旧楼
+      const c = [0.9, 0.87, 0.8], ax = x1 - 116, bxx = x1 - 4; put(g, ax, z0 + 22, ax + 18, z1 - 3, 27, c, 1); put(g, bxx - 18, z0 + 22, bxx, z1 - 3, 27, c, 1); put(g, ax, z0 + 3, bxx, z0 + 22, 27, c, 1); bx(ax + 22, 27, z0 + 4, bxx - 22, 112, z0 + 21, c, 1.52, DK, 9);
+      tube(V, (ax + bxx) / 2, CURB, 0.7, z1 - 16, 5, 5, 16, [0.6, 0.6, 0.58], 9, true); bx((ax + bxx) / 2 - 0.4, 0.7, z1 - 16.4, (ax + bxx) / 2 + 0.4, 2.6, z1 - 15.6, [0.5, 0.56, 0.6], 13); put(g, x0 + 2, z0 + 3, ax - 8, z1 - 3, 34, wallR(), 1, 0.5); mark('半岛酒店', (ax + bxx) / 2, z1 + 1.6, (ax + bxx) / 2, z0 + 20); }
+    else if (kind === 'obs') {                             // 天文台山：城中间一座长满树的小山，山顶是白色的老天文台
+      hill(g, 22, 44, 2); lawn(g, 1); const y = groundTop(cx, cz); bx(cx - 12, y - 3, cz - 8, cx + 12, y + 8, cz + 8, WH, 1.4, [0.5, 0.2, 0.16], 9); bx(cx - 13, y + 3.8, cz - 9, cx + 13, y + 4.1, cz + 9, WH, 9); ball(V, cx + 6, y + 8, cz, 3.4, 3.4, 3.4, WH, 13); tube(V, cx - 7, y + 8, y + 26, cz, 0.25, 0.1, 6, [0.8, 0.2, 0.16], 9); addBox({ x0: cx - 12, z0: cz - 8, x1: cx + 12, z1: cz + 8, h: y + 12 });
+      for (let k = 0; k < 85; k++) { const x = lerp(x0 + 3, x1 - 3, R()), z = lerp(z0 + 3, z1 - 3, R()); if (Math.abs(x - cx) < 17 && Math.abs(z - cz) < 13) continue; tree(x, z, 0.9 + R() * 0.8); } mark('天文台', cx, z1 + 1.6, cx, cz); mark('天文台山顶', cx, cz + 12, cx, cz); }
+    else if (kind === 'museum') {                          // 科学馆和历史博物馆：两栋又宽又矮的大盒子，中间是广场
+      put(g, x0 + 6, z0 + 8, cx - 12, z1 - 30, 20, [0.72, 0.36, 0.44], 10); bx(x0 + 20, 20, z0 + 20, x0 + 44, 27, z0 + 50, [0.2, 0.42, 0.62], 9); put(g, cx + 12, z0 + 8, x1 - 6, z1 - 30, 18, [0.84, 0.8, 0.72], 10); bx(cx + 30, CURB, z1 - 30, x1 - 24, 8, z1 - 26, GLASS[0], 6.4, DK, 9);
+      for (let x = x0 + 8; x < x1 - 4; x += 13) tree(x, z1 - 10, 1); for (let z = z0 + 14; z < z1 - 34; z += 14) tree(cx, z, 1.1); mark('博物馆', cx, z1 + 1.6, cx, cz); }
+    else if (kind === 'campus') { const c = [0.58, 0.25, 0.18]; lots(g, 34, 34, 9, (x, z, cw, cd) => { const h = 22 + R() * 16; put(g, x + 3, z + 3, x + cw - 3, z + cd - 3, h, c, 10); tube(V, x + 3, CURB, h + 4, z + 3, 3.4, 3.4, 10, c, 10, true); tube(V, x + cw - 3, CURB, h + 4, z + cd - 3, 3.4, 3.4, 10, c, 10, true); }, 2); mark('理工大学', x0 - 1.6, cz, cx, cz); }
+    else if (kind === 'coli') {                            // 红磡体育馆：一个倒过来的金字塔
+      const a = 13, b = 26, ya = CURB + 4, yb = 40, c = [0.78, 0.78, 0.76], cc = (sx, sz, r, y) => [cx + sx * r, y, cz + sz * r]; bx(cx - a, CURB, cz - a, cx + a, ya, cz + a, [0.3, 0.3, 0.32], 9);
+      for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const tx = -nz, tz = nx, l = Math.hypot(yb - ya, b - a), n = [nx * (yb - ya) / l, -(b - a) / l, nz * (yb - ya) / l], p = (r, s, y) => [cx + nx * r + tx * s * r, y, cz + nz * r + tz * s * r]; const q = [p(a, -1, ya), p(a, 1, ya), p(b, 1, yb), p(b, -1, yb)]; quad(q[1], q[0], q[3], q[2], n, c, 10); }
+      bx(cx - b, yb, cz - b, cx + b, yb + 1.2, cz + b, c, 9, [0.5, 0.5, 0.5], 9); addBox({ x0: cx - a, z0: cz - a, x1: cx + a, z1: cz + a, h: 42 }); mark('红磡体育馆', x0 - 1.6, cz, cx, cz); }
+    else if (kind === 'hhst') { put(g, x0 + 3, z0 + 3, x1 - 3, z1 - 3, 14, [0.7, 0.72, 0.74], 10); bx(x0 + 1, 5.4, z0 + 20, x0 + 3, 5.8, z1 - 20, GLASS[0], 9); mark('红磡站', x0 - 1.6, cz, cx, cz); }
+  };
+  for (const g of G) gen(g);
+  // 每个格子的人行道底板，以及沿着马路的路灯、栏杆、红绿灯
+  for (const B of City.blocks) { const { x0, x1, z0, z1, kind, i } = B, o = B.open, g = B.g;
+    bx(B.sx0, 0, B.sz0, B.sx1, CURB, B.sz1, [0.56, 0.55, 0.53], 3);
+    for (const sd of [0, 1, 2, 3]) { if (!o[sd]) continue; const onX = sd < 2, len = onX ? z1 - z0 : x1 - x0, n = Math.max(1, Math.round(len / 30)), dx = sd === 0 ? -1 : sd === 1 ? 1 : 0, dz = sd === 2 ? -1 : sd === 3 ? 1 : 0;
+      for (let k = 0; k < n; k++) { const t = (k + 0.5) / n * len; lampPost(sd === 0 ? x0 - 1 : sd === 1 ? x1 + 1 : x0 + t, sd === 2 ? z0 - 1 : sd === 3 ? z1 + 1 : z0 + t, dx, dz); }
+      if (!/^(park|obs|signal|garden|prom|ferry|culture|space|aos|regent|dock)$/.test(kind) && len > 26) for (const [a, b] of [[6, len / 2 - 5], [len / 2 + 5, len - 6]]) { const RC = [0.5, 0.52, 0.54], e = 1.72, t = 0.03; if (onX) { const x = sd === 0 ? x0 - e : x1 + e; bx(x - t, CURB, z0 + a, x + t, CURB + 1.05, z0 + b, RC, 14); addBox({ x0: x - t, z0: z0 + a, x1: x + t, z1: z0 + b, h: CURB + 1.05, thin: true }); } else { const z = sd === 2 ? z0 - e : z1 + e; bx(x0 + a, CURB, z - t, x0 + b, CURB + 1.05, z + t, RC, 14); addBox({ x0: x0 + a, z0: z - t, x1: x0 + b, z1: z + t, h: CURB + 1.05, thin: true }); }      /* 栏杆挡人也挡车（人可以跳过去） */ } }
+    for (const [tx, tz, a, b] of [[x0 - 1.5, z0 - 1.5, 0, 2], [x1 + 1.5, z1 + 1.5, 1, 3]]) if (o[a] && o[b]) { const PC = [0.16, 0.17, 0.18]; City.posts.push({ x: tx, z: tz, r: 0.12 }); tube(V, tx, CURB, 3.1, tz, 0.07, 0.07, 6, PC, 9); bx(tx - 0.17, 3.1, tz - 0.17, tx + 0.17, 4.1, tz + 0.17, [0.05, 0.05, 0.055], 9); for (let q = 0; q < 3; q++) bx(tx - 0.19, 3.83 - q * 0.3, tz - 0.19, tx + 0.19, 4.02 - q * 0.3, tz + 0.19, [q * 0.5, 0, 0], 15); }
+    if (kind !== 'park' && ((i === 6 && o[1]) || (i === 7 && o[0]))) for (let z = z0 + 8; z < z1 - 4; z += 16) tree(i === 6 ? x1 + 0.6 : x0 - 0.6, z, 0.75);      // 弥敦道的行道树
+    if (/^(park|obs|prom|ferry|aos|garden|culture|space)$/.test(kind)) for (let k = 0; k < 2; k++) City.spots.push([lerp(x0 + 4, x1 - 4, R()), lerp(z0 + 4, z1 - 4, R())]); else for (let k = 0; k < 2; k++) { const sd = [0, 1, 2, 3].filter(s => o[s]); if (!sd.length) break; const s = sd[(R() * sd.length) | 0]; City.spots.push(s < 2 ? [s === 0 ? x0 - 1 : x1 + 1, lerp(z0, z1, R())] : [lerp(x0, x1, R()), s === 2 ? z0 - 1 : z1 + 1]); }
+  }
+  City.spots = City.spots.filter(s => { const o = { x: s[0], z: s[1] }, B = cell(colOf(s[0]), rowOf(s[1])); return !B.boxes.some(b => !b.thin && o.x > b.x0 - 1 && o.x < b.x1 + 1 && o.z > b.z0 - 1 && o.z < b.z1 + 1) && !City.trees.some(t => Math.hypot(t.x - o.x, t.z - o.z) < 1.5); });
+  // ---------- 马路 ----------
+  // 路面上每个点都带着“离路中线多远、沿路走了多远、这段路多长、多宽、几条车道”，着色器照着画标线
+  const E = HALF + 6, A = HALF + 18, rq = (xa, za, xb, zb, f) => { for (const [x, z] of [[xa, zb], [xb, zb], [xb, za], [xa, zb], [xb, za], [xa, za]]) { const a = f(x, z); V.push(x, 0, z, a[3], a[4], a[5], a[0], a[1], a[2], 2); } };
+  quad([-E, -0.05, E], [E, -0.05, E], [E, -0.05, -E], [-E, -0.05, -E], [0, 1, 0], [0.56, 0.55, 0.53], 3);
+  const legs = (i, j) => [j > 0 && !cv[i][j - 1], j < GRID && !cv[i][j], i > 0 && !ch[j][i - 1], i < GRID && !ch[j][i]];
+  City.legs = legs;
+  for (let j = 0; j <= GRID; j++) for (let i = 0; i <= GRID; i++) { const L = legs(i, j), ns = L[0] || L[1], ew = L[2] || L[3];
+    if (ns && ew) { const nl = L.filter(Boolean).length, yb = nl >= 3 && HX[i] >= 5.5 && HZ[j] >= 5 ? 1 : 0; rq(XS[i] - HX[i], ZS[j] - HZ[j], XS[i] + HX[i], ZS[j] + HZ[j], (x, z) => [x - XS[i], z - ZS[j], yb, HX[i], HZ[j], 1]); }
+    if (j < GRID && !cv[i][j]) { const Lb = legs(i, j + 1), ja = ew, jb = Lb[2] || Lb[3], za = ZS[j] + (ja ? HZ[j] : 0), zb = ZS[j + 1] - (jb ? HZ[j + 1] : 0), a0 = ja ? 0 : 30, len = zb - za + a0 + (jb ? 0 : 30); rq(XS[i] - HX[i], za, XS[i] + HX[i], zb, (x, z) => [x - XS[i], z - za + a0, len, HX[i], lanesOf(HX[i]), 0]); }
+    if (i < GRID && !ch[j][i]) { const Lb = legs(i + 1, j), ja = ns, jb = Lb[0] || Lb[1], xa = XS[i] + (ja ? HX[i] : 0), xb = XS[i + 1] - (jb ? HX[i + 1] : 0), a0 = ja ? 0 : 30, len = xb - xa + a0 + (jb ? 0 : 30); rq(xa, ZS[j] - HZ[j], xb, ZS[j] + HZ[j], (x, z) => [z - ZS[j], x - xa + a0, len, HZ[j], lanesOf(HZ[j]), 0]); }
+  }
+  // 四周的海堤和栏杆
+  for (const [x0, z0, x1, z1] of [[-A, -A, A, -E], [-A, E, A, A], [-A, -E, -E, E], [E, -E, A, E]]) bx(x0, -3, z0, x1, CURB, z1, [0.55, 0.54, 0.52], 3);
+  const EX = City.ext = { x0: -905, x1: -A, z0: -A, z1: -214 };
+  for (const [x0, z0, x1, z1] of [[-A, A, A, A + 0.3], [-A - 0.3, EX.z1, -A, A], [A, -A, A + 0.3, A], [EX.x0 - 0.3, EX.z0, EX.x0, EX.z1], [EX.x0, EX.z1, EX.x1, EX.z1 + 0.3]]) bx(x0, CURB + 0.95, z0, x1, CURB + 1.05, z1, [0.5, 0.52, 0.54], 13);
+  for (let k = -A; k <= A; k += 3) for (const [x, z] of [[k, A + 0.15], [-A - 0.15, k], [A + 0.15, k]]) if (!(x < -A && z < EX.z1)) bx(x - 0.05, CURB, z - 0.05, x + 0.05, CURB + 1, z + 0.05, [0.4, 0.42, 0.44], 9);
+  for (let k = EX.z0; k <= EX.z1; k += 3) bx(EX.x0 - 0.2, CURB, k - 0.05, EX.x0 - 0.1, CURB + 1, k + 0.05, [0.4, 0.42, 0.44], 9); for (let k = EX.x0; k <= EX.x1; k += 3) bx(k - 0.05, CURB, EX.z1 + 0.1, k + 0.05, CURB + 1, EX.z1 + 0.2, [0.4, 0.42, 0.44], 9);
+  // 西九文化区：填海出来的一片地。大草坪和弯弯的步道，黑色横板一样的美术馆，金色的博物馆，海边的演出场地
+  { bx(EX.x0, -3, EX.z0, EX.x1, CURB, EX.z1, [0.56, 0.55, 0.53], 3); const L = { x0: EX.x0 + 14, x1: EX.x1 - 14, z0: -440, z1: EX.z1 - 14 }; City.hills.push({ x0: L.x0, x1: L.x1, z0: L.z0, z1: L.z1, h: 4, m: 34, s: 1.7 }); lawn(L, 0);
+    const dk = [0.13, 0.14, 0.15]; bx(-790, CURB, -562, -640, 16, -470, dk, 10, [0.3, 0.3, 0.3], 9); addBox({ x0: -790, z0: -562, x1: -640, z1: -470, h: 16 }); bx(-772, 16, -524, -658, 86, -510, [0.2, 0.21, 0.22], 1.33, DK, 9); bx(-770, 5, -470.4, -660, 12, -470, GLASS[0], 6.4);
+    const gd = [0.62, 0.48, 0.26]; bx(-890, CURB, -550, -822, 26, -478, gd, 10); bx(-894, 26, -554, -818, 44, -474, gd, 10, [0.4, 0.34, 0.24], 9); addBox({ x0: -890, z0: -550, x1: -822, z1: -478, h: 44 });
+    bx(-720, CURB, -300, -664, 11, -256, [0.5, 0.5, 0.5], 10); bx(-712, 11, -292, -690, 19, -264, [0.06, 0.06, 0.07], 9); addBox({ x0: -720, z0: -300, x1: -664, z1: -256, h: 19 });
+    const pathW = 2.2, pc = [0.74, 0.72, 0.68]; for (const [ph, amp, zc] of [[0, 34, -340], [2.1, 26, -290]]) for (let k = 0; k < 44; k++) { const xa = lerp(L.x0 + 4, L.x1 - 4, k / 44), xb = lerp(L.x0 + 4, L.x1 - 4, (k + 1) / 44), za = zc + Math.sin(xa * 0.022 + ph) * amp, zb = zc + Math.sin(xb * 0.022 + ph) * amp, Y = (x, z) => CURB + 0.09 + hillAt(x, z); quad([xa, Y(xa, za + pathW), za + pathW], [xb, Y(xb, zb + pathW), zb + pathW], [xb, Y(xb, zb - pathW), zb - pathW], [xa, Y(xa, za - pathW), za - pathW], [0, 1, 0], pc, 3); }
+    const R5 = rng(3131); for (let k = 0; k < 60; k++) { const x = lerp(EX.x0 + 8, EX.x1 - 6, R5()), z = lerp(EX.z0 + 8, EX.z1 - 6, R5()); if ((x > -796 && x < -634 && z < -464) || (x < -814 && z < -470) || (x > -726 && x < -658 && z > -306 && z < -250)) continue; tree(x, z, 0.8 + R5() * 0.7); }
+    for (let z = EX.z0 + 30; z < EX.z1 - 10; z += 34) lampPost(EX.x0 + 6, z, 1, 0); for (let x = EX.x0 + 30; x < EX.x1 - 10; x += 34) { lampPost(x, EX.z1 - 6, 0, -1); bench(x + 9, EX.z1 - 4, true); }
+    mark('西九艺术公园', -740, -330, -760, -260); mark('M+ 美术馆', -715, -452, -715, -517); mark('故宫文化博物馆', -812, -514, -856, -514); for (let k = 0; k < 6; k++) City.spots.push([lerp(EX.x0 + 20, EX.x1 - 20, R5()), lerp(-430, EX.z1 - 20, R5())]); }
+  // 北面：接着九龙的陆地，远处是楼群和狮子山（走不过去，只是背景）
+  { const R4 = rng(4477), zn = -A; bx(-1700, -3, zn - 1500, 1700, CURB - 0.02, zn, [0.33, 0.34, 0.33], 9); bx(-A, CURB, zn - 0.6, A, CURB + 2.4, zn, [0.5, 0.5, 0.48], 10);
+    for (let k = 0; k < 150; k++) { const x = -1300 + R4() * 2600, z = zn - 14 - R4() * R4() * 620, wd = 20 + R4() * 26, h = 30 + R4() * R4() * 150, gl = R4() < 0.3, c = gl ? GLASS[(R4() * GLASS.length) | 0] : WALL[(R4() * WALL.length) | 0]; bx(x, CURB, z - wd, x + wd, h, z, c, (gl ? 6 : 1) + R4() * 0.9, DK, 9); }
+    for (let k = 0; k < 8; k++) ball(V, -1500 + k * 420 + R4() * 150, -80, zn - 1250 - R4() * 200, 420 + R4() * 200, 300 + R4() * 160, 320, [0.09, 0.17, 0.1], 5, 0.25);
+    ball(V, 260, 150, zn - 1300, 150, 190, 130, [0.2, 0.22, 0.18], 5, 0.4); ball(V, 380, 170, zn - 1310, 90, 110, 100, [0.2, 0.22, 0.18], 5, 0.45); }
+  // 对岸：港岛的天际线。几栋一眼认得出的摩天楼、山坡上密密的住宅、海边的摩天轮和码头，夜里亮着霓虹；后面是太平山。走不过去，从海旁看过去就是它
+  { const R3 = rng(852), z0 = A + 900, NEON = [[0.15, 0.45, 1], [1, 0.2, 0.65], [1, 0.12, 0.1], [0.2, 1, 0.9], [1, 0.75, 0.3], [0.7, 0.3, 1]];
+    const band = (a, b, t, col) => { const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, px = -dy / l * t, py = dx / l * t, q = [[a[0] - px, a[1] - py, a[2]], [b[0] - px, b[1] - py, b[2]], [b[0] + px, b[1] + py, b[2]], [a[0] + px, a[1] + py, a[2]]]; quad(q[0], q[1], q[2], q[3], [0, 0, -1], col, 16.3); quad(q[1], q[0], q[3], q[2], [0, 0, -1], col, 16.3); };
+    bx(-1500, -3, z0 - 20, 1500, 0.5, z0 + 700, [0.3, 0.32, 0.3], 9);
+    for (let k = 0; k < 9; k++) ball(V, -1300 + k * 330 + R3() * 120, -60, z0 + 560 + R3() * 120, 340 + R3() * 160, 380 + R3() * 200, 300, [0.08, 0.16, 0.1], 5, 0.25); ball(V, -180, -60, z0 + 640, 560, 640, 330, [0.08, 0.16, 0.1], 5, 0.2);
+    const keep = x => Math.abs(x + 450) < 44 || Math.abs(x + 250) < 54 || Math.abs(x - 20) < 50 || Math.abs(x - 420) < 46 || (x > 250 && x < 480);
+    for (let k = 0; k < 110; k++) { const x = -1250 + R3() * 2500, z = z0 + 6 + R3() * 170, w = 24 + R3() * 28, h = 60 + R3() * R3() * 230, gl = R3() < 0.7, c = gl ? GLASS[(R3() * GLASS.length) | 0] : WALL[(R3() * WALL.length) | 0]; if (keep(x + w / 2) && z < z0 + 90) continue; bx(x, 0.5, z, x + w, h, z + w * (0.7 + R3() * 0.5), c, (gl ? 6 : 1) + R3() * 0.9, DK, 9);
+      if (R3() < 0.4) { const nc = NEON[(R3() * NEON.length) | 0]; bx(x - 0.3, h - 5, z - 0.4, x + w + 0.3, h - 1.5, z, nc, 16 + R3() * 0.9); if (R3() < 0.5) bx(x + w * 0.2, h * 0.55, z - 0.4, x + w * 0.8, h * 0.55 + 10, z, nc, 16 + R3() * 0.9); } }
+    for (let k = 0; k < 130; k++) { const x = -1150 + R3() * 2300, zz = z0 + 200 + R3() * 250, w = 15 + R3() * 9, base = (zz - z0 - 180) * 0.5, h = base + 55 + R3() * 95; bx(x, base - 30, zz, x + w, h, zz + w, WALL[(R3() * WALL.length) | 0], 1 + R3() * 0.9, DK, 9); }      // 山坡上一层层往上爬的住宅楼
+    // 国际金融中心：往上收窄，顶上一圈亮着的“皇冠”
+    { const x = -250, z = z0 + 4, g1 = [0.3, 0.36, 0.44]; bx(x - 28, 0.5, z, x + 28, 250, z + 56, g1, 6.3, DK, 9); bx(x - 25, 250, z + 3, x + 25, 345, z + 53, g1, 6.5, DK, 9); bx(x - 21, 345, z + 7, x + 21, 398, z + 49, g1, 6.7, DK, 9); for (let q = 0; q < 8; q++) { const a = q / 8 * 6.283, px = x + Math.cos(a) * 19, pz = z + 28 + Math.sin(a) * 19; bx(px - 2, 398, pz - 2, px + 2, 418, pz + 2, [1, 0.88, 0.6], 16.5); } bx(x - 21.4, 392, z + 6.6, x + 21.4, 398, z + 49.4, [1, 0.88, 0.6], 16.5); }
+    // 中银大厦：一节节错开的棱柱，立面上交叉的白色灯带，顶上两根天线
+    { const x = 20, z = z0 + 10, g1 = [0.22, 0.3, 0.4], nc = [0.6, 0.95, 1]; bx(x - 26, 0.5, z, x + 26, 150, z + 52, g1, 6.4, DK, 9); bx(x - 26, 150, z, x + 26, 215, z + 26, g1, 6.5, DK, 9); bx(x - 26, 215, z, x, 285, z + 26, g1, 6.6, DK, 9); wedge(x - 26, z, x, z + 26, 285, 285, 330, g1, 6.6); wedge(x, z, x + 26, z + 26, 215, 215, 250, g1, 6.5);
+      for (const [ya, yb] of [[4, 78], [78, 150]]) { band([x + 26, ya, z - 0.3], [x - 26, yb, z - 0.3], 1.5, nc); band([x + 26, yb, z - 0.3], [x - 26, ya, z - 0.3], 1.5, nc); } band([x + 26, 150, z - 0.3], [x - 26, 215, z - 0.3], 1.5, nc); band([x, 215, z - 0.3], [x - 26, 285, z - 0.3], 1.5, nc); for (const ex of [x - 26, x + 26]) band([ex, 4, z - 0.3], [ex, 215, z - 0.3], 1.2, nc); band([x - 26, 215, z - 0.3], [x - 26, 330, z - 0.3], 1.2, nc); band([x, 215, z - 0.3], [x, 285, z - 0.3], 1.2, nc); for (const yy of [78, 150, 215]) band([x + 26, yy, z - 0.3], [x - 26, yy, z - 0.3], 1.2, nc);
+      tube(V, x - 20, 330, 395, z + 8, 0.9, 0.2, 6, [0.8, 0.8, 0.82], 13); tube(V, x - 8, 318, 380, z + 8, 0.9, 0.2, 6, [0.8, 0.8, 0.82], 13); }
+    // 中环中心：通体带彩色轮廓灯的高塔，顶上一根尖
+    { const x = -450, z = z0 + 30, g1 = [0.24, 0.28, 0.4], nc = [0.3, 0.45, 1]; bx(x - 20, 0.5, z, x + 20, 292, z + 40, g1, 6.4, DK, 9); tube(V, x, 292, 346, z + 20, 9, 0.3, 4, [0.6, 0.65, 0.8], 13, true); for (const ex of [x - 20.3, x + 20.3]) bx(ex - 0.5, 4, z - 0.5, ex + 0.5, 292, z + 0.5, nc, 16.2); for (let yy = 40; yy < 292; yy += 36) bx(x - 20.4, yy, z - 0.5, x + 20.4, yy + 1.6, z, yy % 72 < 36 ? nc : [1, 0.2, 0.65], 16.6); }
+    // 中环广场：金色玻璃的塔，金字塔尖顶
+    { const x = 420, z = z0 + 30, g1 = [0.5, 0.42, 0.24]; bx(x - 22, 0.5, z, x + 22, 300, z + 44, g1, 6.4, DK, 9); tube(V, x, 300, 340, z + 22, 30, 1.5, 4, [0.6, 0.55, 0.4], 13, true); tube(V, x, 340, 374, z + 22, 1, 0.2, 6, [0.9, 0.85, 0.6], 16.4); bx(x - 22.4, 292, z - 0.4, x + 22.4, 300, z + 44.4, [1, 0.8, 0.3], 16.4); bx(x - 22.4, 150, z - 0.4, x + 22.4, 153, z, [0.2, 1, 0.9], 16.8); }
+    // 会展中心：伸进海里的弧形屋顶
+    bx(290, 0.5, z0 - 64, 470, 14, z0 - 10, [0.8, 0.8, 0.78], 10); ball(V, 380, 14, z0 - 37, 96, 17, 32, [0.82, 0.84, 0.86], 13); bx(290, 2, z0 - 64.4, 470, 12, z0 - 64, [1, 0.85, 0.55], 16.2);
+    // 海边的摩天轮和一排码头
+    { const cx = -120, cy = 36, cz = z0 - 30, r = 29, nc = [1, 0.2, 0.55]; for (let q = 0; q < 32; q++) { const a0 = q / 32 * 6.283, a1 = (q + 1) / 32 * 6.283; band([cx + Math.cos(a0) * r, cy + Math.sin(a0) * r, cz], [cx + Math.cos(a1) * r, cy + Math.sin(a1) * r, cz], 1.1, nc); } for (let q = 0; q < 8; q++) { const a0 = q / 8 * 3.1416; band([cx + Math.cos(a0) * r, cy + Math.sin(a0) * r, cz], [cx - Math.cos(a0) * r, cy - Math.sin(a0) * r, cz], 0.3, [1, 0.6, 0.8]); } bx(cx - 14, 0.5, cz - 1, cx - 12, cy, cz + 1, [0.8, 0.8, 0.8], 9); bx(cx + 12, 0.5, cz - 1, cx + 14, cy, cz + 1, [0.8, 0.8, 0.8], 9); bx(cx - 14, cy - 1, cz - 1, cx + 14, cy + 1, cz + 1, [0.8, 0.8, 0.8], 9);
+      for (let q = 0; q < 7; q++) { const px = -420 + q * 46 + (q > 3 ? 70 : 0); bx(px, -1, z0 - 70, px + 30, 0.6, z0 - 18, [0.5, 0.5, 0.48], 3); bx(px + 2, 0.6, z0 - 66, px + 28, 9, z0 - 24, [0.86, 0.86, 0.8], 1 + R3() * 0.9, [0.3, 0.3, 0.3], 9); bx(px + 1.6, 7.4, z0 - 66.4, px + 28.4, 8.4, z0 - 66, NEON[q % 6], 16 + q * 0.13); } }
+    bx(-1250, 0.4, z0 - 12, 1250, 1.1, z0 - 11, [1, 0.72, 0.3], 16.9); }      // 沿岸一线路灯
+  for (const q of City.posts) City.trees.push(q);      // 灯柱和红绿灯的柱子也撞得到
+  City.n = V.length / 10;
+})();
+const blockAt = (x, z) => City.blocks[rowOf(z) * GRID + colOf(x)];
+const groundY = (x, z) => { if (Math.abs(x) > HALF + 6 || Math.abs(z) > HALF + 6) return CURB + (x < -HALF ? hillAt(x, z) : 0); const B = blockAt(x, z); return x >= B.sx0 && x <= B.sx1 && z >= B.sz0 && z <= B.sz1 ? CURB + hillAt(x, z) : 0; };
+// 圆和楼房的碰撞：把圆心推出去，返回是否撞到
+function pushOut(o, r, tall) {
+  let hit = false; const B = blockAt(o.x, o.z);
+  if (B) for (const b of B.boxes) { if (tall && b.h < tall) continue; const nx = clamp(o.x, b.x0, b.x1), nz = clamp(o.z, b.z0, b.z1); let dx = o.x - nx, dz = o.z - nz; const d2 = dx * dx + dz * dz; if (d2 >= r * r) continue; hit = true; if (d2 > 1e-6) { const d = Math.sqrt(d2), k = (r - d) / d; o.x += dx * k; o.z += dz * k; o.nx = dx / d; o.nz = dz / d; } else { const l = o.x - b.x0, rr = b.x1 - o.x, t = o.z - b.z0, bb = b.z1 - o.z, m = Math.min(l, rr, t, bb); if (m === l) { o.x = b.x0 - r; o.nx = -1; o.nz = 0; } else if (m === rr) { o.x = b.x1 + r; o.nx = 1; o.nz = 0; } else if (m === t) { o.z = b.z0 - r; o.nx = 0; o.nz = -1; } else { o.z = b.z1 + r; o.nx = 0; o.nz = 1; } } }
+  for (const t of City.trees) { const dx = o.x - t.x, dz = o.z - t.z; if (dx > 4 || dx < -4 || dz > 4 || dz < -4) continue; const d = Math.hypot(dx, dz), m = r + t.r; if (d < m && d > 1e-4) { o.x += dx / d * (m - d); o.z += dz / d * (m - d); o.nx = dx / d; o.nz = dz / d; hit = true; } }
+  const lim = HALF + 17.4 - r, EX = City.ext; if (o.x > lim) { o.x = lim; hit = true; o.nx = -1; o.nz = 0; }
+  if (o.x < -lim) { const zl = EX.z1 - 0.6 - r; if (o.z <= zl + 0.3) { if (o.z > zl) { o.z = zl; hit = true; o.nx = 0; o.nz = -1; } if (o.x < EX.x0 + 0.6 + r) { o.x = EX.x0 + 0.6 + r; hit = true; o.nx = 1; o.nz = 0; } } else { o.x = -lim; hit = true; o.nx = 1; o.nz = 0; } } if (o.z > lim) { o.z = lim; hit = true; o.nx = 0; o.nz = -1; } if (o.z < -lim) { o.z = -lim; hit = true; o.nx = 0; o.nz = 1; }
+  return hit;
+}
+
+/* ---------- 3 · 着色器 ---------- */
+const GL_COMMON = `#version 300 es
+precision highp float;
+uniform vec3 uSun, uSunCol, uCam; uniform float uDay, uDusk, uTime, uNight;
+float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+float fbm(vec2 p){ float a = .5, s = 0.; for (int i = 0; i < 4; i++) { s += a * noise(p); p = p * 2.03 + 17.1; a *= .5; } return s; }
+// 天空底色：天顶到地平线的渐变 + 太阳周围的暖光。雾和玻璃反射也用它，所以远处的楼会自然融进天色里
+vec3 skyCol(vec3 d){ float h = max(d.y, 0.); vec3 zen = mix(vec3(.012, .018, .045), vec3(.16, .34, .74), uDay), hor = mix(vec3(.04, .05, .09), vec3(.6, .72, .88), uDay);
+  hor = mix(hor, vec3(1., .56, .3), uDusk * .65); vec3 c = mix(hor, zen, pow(h, .42)); float sd = max(dot(d, uSun), 0.); c += uSunCol * (pow(sd, 6.) * .35 * uDusk + pow(sd, 48.) * .35 * uDay); return c; }
+
+`;
+const VS = `#version 300 es
+layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNor; layout(location=2) in vec3 aCol; layout(location=3) in float aMat;
+uniform mat4 uVP, uM, uSVP; uniform vec3 uTint;
+out vec3 vPos, vNor, vCol; flat out float vMat; out vec4 vSh;
+void main(){ vec4 w = uM * vec4(aPos, 1.); vPos = w.xyz; vNor = mat3(uM) * aNor; vCol = aMat < .5 ? aCol * uTint : aCol; vMat = aMat; vSh = uSVP * w; gl_Position = uVP * w; }`;
+const FS = GL_COMMON + `
+in vec3 vPos, vNor, vCol; flat in float vMat; in vec4 vSh; out vec4 o; uniform sampler2D uAtlas;
+uniform highp sampler2DShadow uShadow; uniform float uShadowOn, uGloss, uCarY; uniform vec3 uLights; uniform vec4 uHL; uniform vec3 uHLd;
+float shadow(){ if (uShadowOn < .5) return 1.; vec3 s = vSh.xyz / vSh.w * .5 + .5; if (s.x < 0. || s.x > 1. || s.y < 0. || s.y > 1. || s.z > 1.) return 1.;
+  float b = s.z - .0016, t = 1. / 2048., r = 0.; r += texture(uShadow, vec3(s.xy + vec2(-t, -t), b)); r += texture(uShadow, vec3(s.xy + vec2(t, -t), b)); r += texture(uShadow, vec3(s.xy + vec2(-t, t), b)); r += texture(uShadow, vec3(s.xy + vec2(t, t), b)); return r * .25; }
+// 路灯在地上的光斑：路灯是按规律排的，所以不用真的放几百个光源，按位置算出离最近一盏有多远就行
+uniform sampler2D uLamp;
+float lampGlow(vec3 p){ vec2 q = (p.xz + 576.) / 1152.; return texture(uLamp, q).r * 2. * step(abs(q.x - .5), .5) * step(abs(q.y - .5), .5); }
+void main(){
+  vec3 n = normalize(vNor), v = normalize(uCam - vPos), col = vCol; int mat = int(floor(vMat + .001)); float seed = fract(vMat), spec = 0., rough = 48., emis = 0., refl = 0.; vec3 em = vec3(0.);
+  float dist = length(uCam - vPos);
+  if (mat == 1 || mat == 6) {                                             // 楼房：按世界坐标铺窗户；窗户里用“室内视差”画出有进深的房间
+    if (abs(n.y) < .5) {
+      bool xf = abs(n.x) > .5; float u = xf ? vPos.z : vPos.x, y = vPos.y - ${CURB}; bool glass = mat == 6;
+      vec2 cell = glass ? vec2(1.8, 3.6) : vec2(2.8 + seed * 1.4, 3.2 + seed * .4); bool shop = y < 4.4 && !glass; if (shop) cell = vec2(5.6, 4.4);
+      vec2 g = vec2(u, y) / cell, id = floor(g), f = fract(g); if (shop) id.y = -7.;
+      vec2 w0 = glass ? vec2(.035, .1) : shop ? vec2(.07, .06) : vec2(.2, .24), w1 = glass ? vec2(.965, 1.) : shop ? vec2(.93, .7) : vec2(.8, .8);
+      bool win = f.x > w0.x && f.x < w1.x && f.y > w0.y && f.y < w1.y; float r = hash(id + seed * 91.7), lit = step(r, (shop ? .9 : .46) * uNight);
+      if (win) {
+        vec3 T = xf ? vec3(0., 0., 1.) : vec3(1., 0., 0.); vec3 rd = vec3(dot(-v, T), -v.y, max(dot(v, n), .02)); vec2 ws = (w1 - w0) * cell; rd.xy /= ws; rd.z /= (shop ? 7. : 4.5);
+        vec3 ro = vec3((f - w0) / (w1 - w0), 0.), tm = (step(0., rd) - ro) / rd; tm.z = 1. / rd.z; float t = min(min(tm.x, tm.y), tm.z); vec3 hp = ro + rd * t;
+        vec3 wallc = mix(vec3(.62, .58, .5), vec3(.5, .56, .6), hash(id + 5.)); vec3 room = t == tm.z ? wallc * (.75 + .25 * hp.y) : t == tm.y ? (rd.y > 0. ? vec3(.85) : vec3(.3, .26, .22)) : wallc * .62;
+        if (t == tm.z) { float fur = step(hp.y, .34) * step(.2, hash(id + floor(hp.x * 3.) + 11.)); room = mix(room, vec3(.22, .2, .2) + .3 * hash(id + 3.), fur * .8); if (shop) room = mix(room, vec3(hash(id + 1.), hash(id + 2.), hash(id + 4.)) * .8 + .2, step(.4, hp.y) * step(hp.y, .85) * step(.5, fract(hp.x * 3.)) * .6); }
+        room *= 1. - .5 * hp.z;                                           // 越往里越暗
+        vec3 warm = mix(vec3(1., .74, .42), vec3(.8, .9, 1.), step(.7, hash(id + 9.))); if (shop) warm = vec3(1., .92, .78);
+        vec3 inside = room * (lit > .5 ? warm * (shop ? 1.8 : 1.5) * (.55 + .45 * hash(id + 2.)) : vec3(.05) + .1 * uDay);
+        float cur = glass ? 0. : step(hash(id * 1.7 + 3.), .3) * step(f.x, w0.x + (w1.x - w0.x) * (.2 + .5 * hash(id + 8.)));      // 有的窗拉着半边窗帘
+        inside = mix(inside, vec3(.75, .7, .6) * (lit > .5 ? warm * 1.2 : vec3(.2 + .5 * uDay)), cur);
+        vec3 R = reflect(-v, n); float fr = .16 + .84 * pow(1. - max(dot(n, v), 0.), 4.); vec3 sky = skyCol(normalize(R + vec3(0., .1, 0.)));
+        if (glass) { vec3 tint = mix(vec3(.5, .62, .7), col * 1.6, .5); em = inside * tint * .55 + sky * tint * (.5 + .5 * fr); col = vec3(0.); float mul = step(f.x, w0.x + .03) + step(.93, f.y); em *= 1. - .25 * min(mul, 1.); }
+        else { em = inside * (1. - fr) + sky * fr * 1.1; col = vec3(0.); }
+        spec = 1.4; rough = 220.;
+        vec2 wf = (f - w0) / (w1 - w0); float frm = step(wf.x, .035) + step(.965, wf.x) + step(wf.y, .045) + step(.955, wf.y) + step(abs(wf.x - .5), shop ? .008 : .02);
+        if (!glass && frm > 0.) { em = vec3(0.); col = vec3(.46, .48, .5) * (shop ? .35 : .9); spec = .5; rough = 70.; }
+      } else {
+        float nz = noise(vec2(u, y) * 1.1) * .14 + noise(vec2(u, y) * 7.) * .06; col *= .84 + nz;
+        if (glass) col = mix(col * .3, vec3(.3, .32, .34), .6);
+        else { col *= 1. - .22 * smoothstep(.08, 0., f.y) - .1 * smoothstep(.92, 1., f.y);                    // 每层的线脚
+          col *= 1. - .18 * (smoothstep(w0.x - .03, w0.x, f.x) * step(f.x, w0.x) + smoothstep(w1.x + .03, w1.x, f.x) * step(w1.x, f.x)) * step(w0.y, f.y) * step(f.y, w1.y);      // 窗洞边的阴影
+          col *= 1. - .1 * noise(vec2(u * .4, y * 3.));
+          if (shop) { float fb = step(.72, f.y) * step(f.y, .94); vec3 fcx = .18 + .62 * vec3(hash(id + 31.), hash(id + 37.), hash(id + 41.)); float ch = step(.78, f.y) * step(f.y, .89) * step(.18, f.x) * step(f.x, .82) * step(.35, hash(vec2(floor(f.x * 13.), id.x + 3.))) * step(.25, fract(f.x * 13.));
+            col = mix(col * .7, mix(fcx, vec3(.95), ch), fb); em = mix(fcx * .5, vec3(1.6), ch) * fb * uNight; }
+          else { float fade = smoothstep(140., 50., dist); vec2 tl = fract(vec2(u, y) / vec2(.45, .3)); col *= 1. - .07 * fade * min(step(tl.x, .05) + step(tl.y, .07), 1.);
+            float stn = noise(vec2(u * 2.6, y * .12 + seed * 30.)), under = step(f.y, w0.y) * step(w0.x, f.x) * step(f.x, w1.x); col *= 1. - smoothstep(.45, .9, stn) * (.14 + .22 * under);
+            vec2 a = (f - vec2(w0.x + .04, w0.y - .17)) / vec2(.26, .15); if (hash(id + 21.) < .42 && a.x > 0. && a.x < 1. && a.y > 0. && a.y < 1.) { col = vec3(.6, .6, .57) * (.7 + .3 * step(.5, fract(a.y * 5.))); col *= 1. - .55 * smoothstep(.36, .3, length((a - vec2(.68, .5)) * vec2(1.6, 1.))); col *= .65 + .35 * smoothstep(0., .25, a.y); } } }
+      }
+      col *= .7 + .3 * smoothstep(0., 9., y);
+    }
+  } else if (mat == 2) {                                                  // 沥青 + 标线。路面的每个点自带“离中线多远 / 沿路多远 / 路多长多宽几车道”
+    vec3 rd = vNor; n = vec3(0., 1., 0.); float nz = fbm(vPos.xz * .3) * .55 + noise(vPos.xz * 5.) * .2 + noise(vPos.xz * 31.) * .12; col = vec3(.075, .077, .082) * (.7 + nz); col *= .86 + .28 * hash(floor(vPos.xz / vec2(9., 6.) + .37)); col *= 1. - .2 * smoothstep(.02, 0., abs(noise(vPos.xz * 1.7) - .5)) * smoothstep(.45, .7, noise(vPos.xz * .11)) * smoothstep(60., 20., dist);
+    { vec2 mh = fract(vPos.xz / 26.) * 26. - vec2(9., 15.); float md = length(mh); col = mix(col, vec3(.05, .05, .052) * (.7 + .5 * step(.5, fract(md * 9.))), smoothstep(.42, .38, md)); }
+    float wear = .65 + .35 * noise(vPos.xz * 2.3);
+    if (rd.z < .5) { float d = abs(vCol.x), a = vCol.y, L = vCol.z, hw = rd.x, nl = rd.y, lw = (hw - .45) / nl, core = step(5.9, a) * step(a, L - 5.9), wl = 0., yl = 0.;
+      col *= 1. - .2 * smoothstep(1., .2, abs(abs(fract(d / lw) - .5) * lw - .8)) * step(d, hw - .4);                                  // 轮胎压出来的深色车辙
+      if (nl < 1.5) wl = smoothstep(.1, .06, d) * step(.45, fract(a / 6.)) * core; else wl = smoothstep(.09, .05, abs(d - .16)) * core;      // 窄路中间是虚线，宽路是双白线
+      float k = floor(d / lw + .5); if (k > .5 && k < nl - .5) wl = max(wl, smoothstep(.08, .04, abs(d - k * lw)) * step(.6, fract(a / 9.)) * core);      // 车道分隔虚线
+      yl = (smoothstep(.07, .04, abs(d - (hw - .38))) + (hw > 4.5 ? smoothstep(.07, .04, abs(d - (hw - .14))) : 0.)) * core;              // 路边黄线
+      float cw = step(1., a) * step(a, 4.4) + step(L - 4.4, a) * step(a, L - 1.); wl = max(wl, cw * step(.45, fract(d / 1.2 + .2)) * step(d, hw - .5));      // 斑马线
+      wl = max(wl, (smoothstep(.2, .14, abs(a - 5.4)) + smoothstep(.2, .14, abs(a - (L - 5.4)))) * step(d, hw - .5));                      // 停车线
+      col = mix(col, vec3(.78), wl * wear); col = mix(col, vec3(.8, .6, .1), min(yl, 1.) * wear); }
+    else if (vCol.z > .5) { vec2 b = vCol.xy, q = abs(b) / rd.xy; float m = max(q.x, q.y), box = step(.86, fract((b.x + b.y) / 2.4)) + step(.86, fract((b.x - b.y) / 2.4)); col = mix(col, vec3(.8, .6, .1), min(box + step(.94, m), 1.) * step(m, .98) * wear * .8); }      // 大路口的黄格
+    spec = .06 + .5 * uNight; rough = 24.;
+  } else if (mat == 3) { vec2 tq = vPos.xz / vec2(.6, .3); tq.x += .5 * mod(floor(tq.y), 2.); vec2 t = fract(tq); float fade = smoothstep(70., 22., dist), j = min(step(t.x, .04) + step(t.y, .08), 1.) * fade, pv = mix(.5, hash(floor(tq)), fade);
+    col = mix(vec3(.34, .33, .31), vec3(.4, .36, .33), pv) * (.78 + .2 * pv + .22 * noise(vPos.xz * .7) + .1 * noise(vPos.xz * 14.)) * (1. - .28 * j); col *= 1. - .25 * smoothstep(.62, .8, noise(vPos.xz * 1.9)); }
+  else if (mat == 4) { float g = fbm(vPos.xz * .6); col = mix(vec3(.13, .26, .08), vec3(.3, .44, .15), g) * (.85 + .3 * noise(vPos.xz * 11.)); }
+  else if (mat == 5) { float lf = noise(vPos.xy * 4.5 + vPos.z * 3.3) * .6 + noise(vPos.zy * 11. + vPos.x * 7.) * .4, ed = abs(dot(n, v)); if (dist < 240. && lf > .22 + ed * 1.7) discard;
+    col *= .7 + .5 * noise(vPos.xz * 2.7 + vPos.y * 1.9); col *= .45 + 1.0 * lf; col *= .55 + .45 * smoothstep(-.7, .5, n.y); col += vec3(.1, .13, .02) * uSunCol * pow(max(dot(-v, uSun), 0.), 3.) * uDay; }
+  else if (mat == 8) { col = vec3(.76, .68, .5) * (.85 + .25 * fbm(vPos.xz * .8)); col = mix(col, col * .62, smoothstep(-.35, -.75, vPos.y)); }
+  else if (mat == 10) { float u = abs(n.x) > .5 ? vPos.z : vPos.x; col *= .8 + .2 * step(.5, fract(u * 2.2)); col *= .85 + .2 * noise(vec2(u, vPos.y) * .7); spec = .2; }
+  else if (mat == 7) { emis = col.g > .5 ? uLights.x : uLights.y; em = col * (.15 + 7. * emis); col *= .4; }
+  else if (mat == 11) { vec4 tx = texture(uAtlas, vCol.xy); em = tx.rgb * (.5 + 2.4 * uNight * (.75 + .25 * step(.08, fract(uTime * .7 + seed * 9.)))); col = tx.rgb * .5; }      // 招牌：晚上亮起来，偶尔闪一下
+  else if (mat == 14) { float u = abs(n.x) > .5 ? vPos.z : vPos.x, y = vPos.y - ${CURB}; if (abs(n.y) < .5) { float rail = step(.97, y) + step(abs(y - .14), .03), post = step(abs(fract(u / 2.1) - .5), .022), bar = step(abs(fract(u / .14) - .5), .1) * step(.14, y) * step(dist, 70.); if (rail + post + bar < .5) discard; } col = vec3(.42, .44, .46) * (.8 + .3 * noise(vec2(u * 3., y * 9.))); spec = .5; rough = 50.; }
+  else if (mat == 16) { em = col * (.1 + 5.5 * uNight * (.82 + .18 * sin(uTime * 1.3 + seed * 40.))); col *= .22; }      // 霓虹：楼顶的灯带、摩天轮、大楼轮廓灯
+  else if (mat == 15) { float ph = fract(uTime / 18. + floor(vPos.x / 80.) * .5), idx = vCol.r; bool on = idx < .25 ? ph > .5 : idx < .75 ? (ph > .44 && ph <= .5) : ph <= .44; vec3 lc = idx < .25 ? vec3(1., .08, .04) : idx < .75 ? vec3(1., .55, .05) : vec3(.08, 1., .45); col = lc * .06; em = on ? lc * 4.5 : vec3(0.); }
+  else if (mat == 0) { spec = uGloss * 2.2; rough = 380.; refl = uGloss * .55; }      // 车漆：清漆层，高光又小又亮，侧着看反射天空
+  else if (mat == 12) { spec = 2.; rough = 300.; refl = .75; }                          // 车窗玻璃
+  else if (mat == 13) { spec = 1.2; rough = 120.; refl = .5; }                          // 镀铬 / 轮毂
+  else { spec = uGloss * .5; rough = 40.; refl = 0.; }
+  // 光照：太阳直射（带阴影）+ 天空和地面的环境光 + 夜里的路灯和车灯
+  float sunUp = smoothstep(-.04, .12, uSun.y), nl = max(dot(n, uSun), 0.), sh = nl > 0. ? shadow() : 1.;
+  if (mat == 5) nl = nl * .6 + .4 * max(dot(n, uSun) * .5 + .5, 0.);
+  vec3 skyA = skyCol(vec3(0., 1., 0.)); skyA = mix(skyA, vec3(dot(skyA, vec3(.33))), .45) * 1.25 + uSunCol * .1 * uDay;      // 天光去掉一半蓝色，不然背阴面发紫
+  vec3 amb = mix(uSunCol * vec3(.2, .18, .15) * (.4 + uDay), skyA, n.y * .5 + .5) + vec3(.012, .015, .026);
+  float ao = mat == 0 || mat == 9 || mat == 12 || mat == 13 ? .55 + .45 * smoothstep(0., .9, vPos.y - uCarY) : 1.;      // 车底和轮拱压暗
+  vec3 lit = col * (uSunCol * nl * sh * sunUp * 2.0 + amb * ao);
+  if (uNight > .01) { float lg = lampGlow(vPos) * uNight; float up = mat == 2 || mat == 3 || mat == 4 ? 1. : .35 * smoothstep(9., 1., vPos.y); lit += col * vec3(1., .72, .42) * lg * 1.5 * up; if (mat == 2) em += vec3(1., .72, .42) * lg * .012; }
+  if (uHL.w > .5) { vec3 L = uHL.xyz - vPos; float d = length(L); L /= d; float cone = smoothstep(.82, .97, dot(-L, uHLd)); lit += col * vec3(1., .95, .82) * cone * max(dot(n, L), 0.) * 26. / (1. + d * d * .02) * step(d, 70.); }
+  vec3 hv = normalize(uSun + v); lit += uSunCol * pow(max(dot(n, hv), 0.), rough) * spec * sh * sunUp * 1.6;
+  if (refl > 0.) { float fr = pow(1. - max(dot(n, v), 0.), 4.); vec3 R = reflect(-v, n); vec3 env = R.y > 0. ? skyCol(R) : mix(vec3(.05, .05, .055) + amb * .25, skyCol(vec3(R.x, 0., R.z)), smoothstep(-.3, 0., R.y)); lit = mix(lit, env, refl * (.12 + .88 * fr)); }
+  lit += em;
+  // 远处融进天色（空气透视）
+  vec3 vd = -v; float fog = 1. - exp(-dist * mix(.0008, .0006, uDay)); vec3 fc = skyCol(normalize(vec3(vd.x, max(vd.y, 0.) * .4 + .02, vd.z)));
+  fc += uSunCol * pow(max(dot(vd, uSun), 0.), 6.) * .3 * sunUp;
+  o = vec4(mix(lit, fc, fog), 1.);
+}`;
+const VS_DEPTH = `#version 300 es
+layout(location=0) in vec3 aPos; uniform mat4 uVP, uM; void main(){ gl_Position = uVP * uM * vec4(aPos, 1.); }`;
+const FS_DEPTH = `#version 300 es
+precision highp float; void main(){}`;
+const VS_SKY = `#version 300 es
+out vec2 vUv; void main(){ vec2 p = vec2(gl_VertexID == 1 ? 3. : -1., gl_VertexID == 2 ? 3. : -1.); vUv = p; gl_Position = vec4(p, .9999, 1.); }`;
+const FS_SKY = GL_COMMON + `
+in vec2 vUv; out vec4 o; uniform vec3 uR, uU, uF; uniform vec2 uTan;
+void main(){ vec3 d = normalize(uF + uR * vUv.x * uTan.x + uU * vUv.y * uTan.y); vec3 c = skyCol(d);
+  float sd = dot(d, uSun); c += uSunCol * smoothstep(.9992, .9997, sd) * 12. * step(0., uSun.y + .06);
+  vec3 md = normalize(vec3(-uSun.x, max(-uSun.y, .25), -uSun.z)); c += vec3(.9, .95, 1.) * smoothstep(.9994, .9997, dot(d, md)) * uNight * 2.;
+  if (d.y > 0.) { vec2 sp = d.xz / (d.y + .25) * 60.; float st = step(.9965, hash(floor(sp))) * uNight * smoothstep(0., .25, d.y); c += vec3(st) * (.5 + .5 * sin(uTime * 2. + hash(floor(sp)) * 40.));
+    vec2 cp = d.xz / (d.y + .14) * 1.3 + uTime * .006; float cl = smoothstep(.48, .78, fbm(cp)) * smoothstep(0., .14, d.y); float shade = smoothstep(.4, .9, fbm(cp + uSun.xz * .08));
+    vec3 cc = mix(uSunCol * 1.25 + vec3(.25), vec3(.42, .46, .56), shade * .75) * mix(.12, 1., uDay); cc = mix(cc, vec3(1., .6, .38), uDusk * .5 * (1. - shade)); c = mix(c, cc, cl * .82); }
+  else c = mix(c, vec3(.03, .07, .1), .6);
+  o = vec4(c, 1.); }`;
+const FS_BRIGHT = `#version 300 es
+precision highp float; in vec2 vUv; out vec4 o; uniform sampler2D uTex;
+void main(){ vec3 c = texture(uTex, vUv * .5 + .5).rgb; float l = max(c.r, max(c.g, c.b)); o = vec4(c * smoothstep(1.4, 2.8, l), 1.); }`;
+const FS_BLUR = `#version 300 es
+precision highp float; in vec2 vUv; out vec4 o; uniform sampler2D uTex; uniform vec2 uDir;
+void main(){ vec2 uv = vUv * .5 + .5; vec3 c = texture(uTex, uv).rgb * .227; c += (texture(uTex, uv + uDir * 1.385).rgb + texture(uTex, uv - uDir * 1.385).rgb) * .316; c += (texture(uTex, uv + uDir * 3.231).rgb + texture(uTex, uv - uDir * 3.231).rgb) * .07; o = vec4(c, 1.); }`;
+const FS_POST = `#version 300 es
+precision highp float; in vec2 vUv; out vec4 o; uniform sampler2D uTex, uBloom; uniform highp sampler2D uDepth; uniform float uDay, uBloomK, uAO; uniform vec2 uNF, uTanA, uPx;
+float lin(vec2 uv){ float d = texture(uDepth, uv).r * 2. - 1.; return 2. * uNF.x * uNF.y / (uNF.y + uNF.x - d * (uNF.y - uNF.x)); }
+vec3 vpos(vec2 uv){ float z = lin(uv); return vec3((uv * 2. - 1.) * uTanA * z, -z); }
+void main(){ vec2 uv = vUv * .5 + .5; vec3 c = texture(uTex, uv).rgb;
+  if (uAO > 0.) { vec3 P = vpos(uv); if (-P.z < 160.) { vec3 Px = vpos(uv + vec2(uPx.x, 0.)) - P, Px2 = P - vpos(uv - vec2(uPx.x, 0.)), Py = vpos(uv + vec2(0., uPx.y)) - P, Py2 = P - vpos(uv - vec2(0., uPx.y)); if (abs(Px2.z) < abs(Px.z)) Px = Px2; if (abs(Py2.z) < abs(Py.z)) Py = Py2;
+      vec3 N = normalize(cross(Px, Py)); float rn = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) * 6.2832, occ = 0.; vec2 rs = .9 / (-P.z) / (2. * uTanA);
+      for (int i = 0; i < 8; i++) { float fi = float(i), a = rn + fi * 2.4, r = (fi + .5) / 8.; vec3 v = vpos(uv + vec2(cos(a), sin(a)) * r * rs) - P; float d2 = dot(v, v); occ += max(dot(N, v) * inversesqrt(d2 + 1e-4) - .12, 0.) / (1. + d2 * 1.4); }
+      c *= 1. - uAO * clamp(occ / 8. * 2.6, 0., .8) * smoothstep(160., 90., -P.z); } }
+  c += texture(uBloom, uv).rgb * uBloomK;
+  c *= mix(1.7, .8, uDay); c = (c * (2.51 * c + .03)) / (c * (2.43 * c + .59) + .14);                    // ACES 色调映射
+  c = pow(clamp(c, 0., 1.), vec3(1. / 2.2)); float l = dot(c, vec3(.299, .587, .114)); c = mix(vec3(l), c, 1.08); c = mix(c, c * c * (3. - 2. * c), .5); l = dot(c, vec3(.299, .587, .114)); c += vec3(-.014, .0, .022) * (1. - l) + vec3(.022, .008, -.02) * l; c += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - .5) * .016;      // 稍微提一点饱和度和对比
+  c *= 1. - .32 * dot(vUv, vUv) * .5; o = vec4(c, 1.); }`;
+const VS_WATER = `#version 300 es
+layout(location=0) in vec3 aPos; uniform mat4 uVP; out vec3 vPos; void main(){ vPos = aPos; gl_Position = uVP * vec4(aPos, 1.); }`;
+const FS_WATER = GL_COMMON + `
+in vec3 vPos; out vec4 o;
+void main(){ vec3 v = normalize(uCam - vPos); float dist = length(uCam - vPos); vec2 p = vPos.xz * .12; float t = uTime * .5, e = .35;
+  float h0 = fbm(p + vec2(t * .3, t * .2)) + .5 * fbm(p * 2.7 - vec2(t * .25, t * .4)), hx = fbm(p + vec2(e, 0.) + vec2(t * .3, t * .2)) + .5 * fbm((p + vec2(e, 0.)) * 2.7 - vec2(t * .25, t * .4)), hz = fbm(p + vec2(0., e) + vec2(t * .3, t * .2)) + .5 * fbm((p + vec2(0., e)) * 2.7 - vec2(t * .25, t * .4));
+  vec3 n = normalize(vec3((h0 - hx) * 1.1, 1., (h0 - hz) * 1.1)); n = normalize(mix(n, vec3(0., 1., 0.), clamp(dist / 900., 0., .85)));
+  float fr = .04 + .96 * pow(1. - max(dot(n, v), 0.), 5.); vec3 R = reflect(-v, n); R.y = abs(R.y);
+  vec3 deep = mix(vec3(.004, .012, .022), vec3(.02, .16, .165), uDay), c = mix(deep, skyCol(R), fr);
+  c += uSunCol * pow(max(dot(R, uSun), 0.), 260.) * 7. * smoothstep(-.04, .1, uSun.y);
+  float shore = smoothstep(${HALF + 52}., ${HALF + 40}., max(abs(vPos.x), abs(vPos.z))); c = mix(c, vec3(.5, .62, .6) * mix(.2, 1., uDay), shore * .45 * (.6 + .4 * noise(vPos.xz * .9 + t)));
+  if (uNight > .02) {                                                     // 夜里对岸的霓虹和这边海旁的灯倒映在水面上，拉成一条条彩色的光带
+    float zf = ${HALF + 18 + 900}., k = (.1 + .9 * smoothstep(zf - 860., zf - 6., vPos.z)) * step(${HALF + 19}., vPos.z) * step(vPos.z, zf) * step(abs(vPos.x), 1280.), h1 = hash(vec2(floor(vPos.x / 26.), 3.)), rip = noise(vec2(vPos.x * .5, vPos.z * .22 + uTime * .8)); rip = .15 + 1.3 * rip * rip;
+    vec3 nc = h1 < .3 ? vec3(.1, .35, 1.) : h1 < .5 ? vec3(1., .15, .6) : h1 < .62 ? vec3(1., .1, .08) : h1 < .76 ? vec3(.2, 1., .9) : vec3(1., .72, .3); c += nc * k * sqrt(k) * rip * smoothstep(.5, .1, abs(fract(vPos.x / 26.) - .5)) * uNight * 1.7 * (.4 + .6 * hash(vec2(floor(vPos.x / 26.), 9.)));
+    c += vec3(1., .7, .4) * smoothstep(${HALF + 150}., ${HALF + 20}., vPos.z) * step(${HALF + 18}., vPos.z) * step(abs(vPos.x), ${HALF + 20}.) * rip * .07 * uNight; }
+  float fog = 1. - exp(-dist * .0008); vec3 fc = skyCol(normalize(vec3(-v.x, .02, -v.z))); o = vec4(mix(c, fc, fog), 1.); }`;
+
+/* ---------- 4 · 渲染 ---------- */
+const Rn = { gl: null, q: 1, w: 0, h: 0 };
+function initGL() {
+  const cv = $('cv'), gl = Rn.gl = cv.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'high-performance' }); if (!gl) throw new Error('这个浏览器不支持 WebGL2，画面出不来。换一个新一点的浏览器试试。');
+  const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error('着色器编译失败：' + gl.getShaderInfoLog(o)); return o; };
+  const prog = (v, f) => { const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, v)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, f)); gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('着色器链接失败：' + gl.getProgramInfoLog(p)); const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); for (let i = 0; i < n; i++) { const a = gl.getActiveUniform(p, i); u[a.name] = gl.getUniformLocation(p, a.name); } return { p, u }; };
+  Rn.main = prog(VS, FS); Rn.depth = prog(VS_DEPTH, FS_DEPTH); Rn.sky = prog(VS_SKY, FS_SKY); Rn.water = prog(VS_WATER, FS_WATER); Rn.bright = prog(VS_SKY, FS_BRIGHT); Rn.blur = prog(VS_SKY, FS_BLUR); Rn.post = prog(VS_SKY, FS_POST);
+  Rn.hdr = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));      // 能用高动态范围就用，灯光才有“亮得溢出来”的感觉
+  const mesh = Rn.mesh = arr => { const vao = gl.createVertexArray(); gl.bindVertexArray(vao); const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, arr instanceof Float32Array ? arr : new Float32Array(arr), gl.STATIC_DRAW); for (const [i, n, o] of [[0, 3, 0], [1, 3, 12], [2, 3, 24], [3, 1, 36]]) { gl.enableVertexAttribArray(i); gl.vertexAttribPointer(i, n, gl.FLOAT, false, 40, o); } gl.bindVertexArray(null); return { vao, n: arr.length / 10 }; };
+  Rn.city = mesh(City.verts); City.verts = null;
+  const W1 = [1, 1, 1]; let a = []; box(a, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, W1, 0); Rn.cube = mesh(a);
+  a = []; ball(a, 0, 0, 0, 0.5, 0.5, 0.5, W1, 0); Rn.ball = mesh(a);
+  a = []; tube(a, 0, -0.5, 0.5, 0, 0.5, 0.5, 10, W1, 0, true); ball(a, 0, -0.5, 0, 0.5, 0.16, 0.5, W1, 0); ball(a, 0, 0.5, 0, 0.5, 0.16, 0.5, W1, 0); Rn.limb = mesh(a);
+  a = []; { const g = [0.1, 0.3, 0.2], w = [0.92, 0.92, 0.88], rings = []; for (let k = 0; k <= 10; k++) { const t = k / 10, z = lerp(-14, 14, t), wd = 4.2 * Math.pow(Math.sin(Math.PI * clamp(0.1 + t * 0.8, 0, 1)), 0.5); rings.push([[-wd * 0.7, -0.6, z], [-wd, 1.2, z], [-wd, 2.4, z], [wd, 2.4, z], [wd, 1.2, z], [wd * 0.7, -0.6, z]]); } loft(a, rings, () => [g, 9], [g, 9]); box(a, -3.6, 2.4, -10, 3.6, 4.6, 10, w, 9); box(a, -3.8, 4.6, -10.5, 3.8, 4.8, 10.5, g, 9); box(a, -3, 4.8, -8, 3, 6.6, 8, w, 9); box(a, -3.3, 6.6, -8.6, 3.3, 6.8, 8.6, g, 9); tube(a, 0, 6.8, 9.4, 0, 0.8, 0.7, 8, [0.9, 0.85, 0.3], 9, true); for (let k = -9; k < 10; k += 2) for (const sx of [-1, 1]) { box(a, sx * 3.62 - 0.02, 3, k, sx * 3.62 + 0.02, 4, k + 1.2, [1, 0.9, 0.6], 7); box(a, sx * 3.02 - 0.02, 5.2, k * 0.8, sx * 3.02 + 0.02, 6.1, k * 0.8 + 1, [1, 0.9, 0.6], 7); } } Rn.ferry = mesh(a);
+  const Wd = 6000, wv = []; for (const p of [[-Wd, -0.55, Wd], [Wd, -0.55, Wd], [Wd, -0.55, -Wd], [-Wd, -0.55, Wd], [Wd, -0.55, -Wd], [-Wd, -0.55, -Wd]]) wv.push(p[0], p[1], p[2], 0, 1, 0, 0, 0, 0, 0); Rn.sea = mesh(wv);
+  // 招牌图集
+  Rn.atlas = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, Rn.atlas); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, makeAtlas()); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  // 路灯光斑图：把全城每盏路灯照在地上的亮度先算成一张图，着色器直接查
+  { const N = 512, S = 1152 / N, a = new Float32Array(N * N), u8 = new Uint8Array(N * N); for (const l of City.lamps) { const cx = (l[0] + 576) / S, cz = (l[1] + 576) / S; for (let y = Math.max(0, (cz - 8) | 0); y <= Math.min(N - 1, (cz + 8) | 0); y++) for (let x = Math.max(0, (cx - 8) | 0); x <= Math.min(N - 1, (cx + 8) | 0); x++) { const dx = (x + 0.5 - cx) * S, dz = (y + 0.5 - cz) * S; a[y * N + x] += Math.exp(-(dx * dx + dz * dz) / 46); } }
+    for (let i = 0; i < N * N; i++) u8[i] = Math.min(255, a[i] * 127.5); Rn.lampTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, Rn.lampTex); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1); gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, N, N, 0, gl.RED, gl.UNSIGNED_BYTE, u8); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); }
+  // 阴影贴图
+  const S = Rn.SM = 2048; Rn.shTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, Rn.shTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, S, S, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+  Rn.shFB = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, Rn.shFB); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, Rn.shTex, 0); gl.drawBuffers([gl.NONE]); gl.readBuffer(gl.NONE); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  Rn.cars = CAR_TYPES.map(t => mesh(carMesh(t)));
+  gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE);
+}
+// 画面先画到一张离屏的高动态范围图上（带抗锯齿），再做泛光和调色
+function targets(w, h) {
+  const gl = Rn.gl, T = Rn.T = Rn.T || {}; if (T.w === w && T.h === h && T.q === Rn.q) return; for (const k of ['fb', 'msfb', 'ba', 'bb']) if (T[k]) gl.deleteFramebuffer(T[k]); for (const k of ['tex', 'ta', 'tb']) if (T[k]) gl.deleteTexture(T[k]); for (const k of ['rc', 'rd']) if (T[k]) gl.deleteRenderbuffer(T[k]);
+  T.w = w; T.h = h; T.q = Rn.q; const ifmt = Rn.hdr ? gl.RGBA16F : gl.RGBA8, type = Rn.hdr ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE, samples = Rn.q === 0 ? 0 : Math.min(4, gl.getParameter(gl.MAX_SAMPLES));
+  const tex = (tw, th) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, ifmt, tw, th, 0, gl.RGBA, type, null); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); return t; };
+  const fbo = t => { const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0); return f; };
+  T.tex = tex(w, h); T.fb = fbo(T.tex); T.rd = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, T.rd); T.msfb = null; T.rc = null;
+  if (samples) { gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.DEPTH_COMPONENT24, w, h); T.rc = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, T.rc); gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, ifmt, w, h); T.msfb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, T.msfb); gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, T.rc); gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, T.rd); if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) { gl.deleteFramebuffer(T.msfb); T.msfb = null; gl.bindRenderbuffer(gl.RENDERBUFFER, T.rd); gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h); } }
+  else gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
+  if (T.dtex) gl.deleteTexture(T.dtex); T.dtex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, T.dtex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, w, h, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, T.fb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, T.dtex, 0); T.ao = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE; if (!T.ao) gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, T.msfb ? null : T.rd);
+  T.bw = Math.max(64, w >> 2); T.bh = Math.max(64, h >> 2); T.ta = tex(T.bw, T.bh); T.ba = fbo(T.ta); T.tb = tex(T.bw, T.bh); T.bb = fbo(T.tb); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+function resize() { const cv = $('cv'), r = cv.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, [1, 1.5, 2][Rn.q]) * (Rn.auto || 1), w = Math.max(320, Math.round(r.width * dpr)), h = Math.max(200, Math.round(r.height * dpr)); if (w !== Rn.w || h !== Rn.h) { cv.width = Rn.w = w; cv.height = Rn.h = h; } targets(Rn.w, Rn.h); }
+
+/* 车：车身和车舱都是放样出来的曲面（圆角、收腰、斜的前后挡），轮子是圆的。车头朝 +Z */
+const CAR_TYPES = [
+  { name: '轿车', len: 4.6, w: 1.82, body: 0.6, cab: [-1.75, 1.05], rake: [0.3, 0.42], ch: 0.52, top: 140, acc: 6, grip: 7 },
+  { name: '跑车', len: 4.4, w: 1.9, body: 0.5, cab: [-1.5, 0.75], rake: [0.45, 0.5], ch: 0.4, top: 210, acc: 9, grip: 8.5 },
+  { name: '小巴', len: 6.2, w: 2.05, body: 0.75, cab: [-3.02, 2.75], rake: [0.03, 0.12], ch: 1.45, top: 105, acc: 4.2, grip: 6, van: 1 },
+  { name: '的士', len: 4.7, w: 1.8, body: 0.62, cab: [-1.7, 1.1], rake: [0.24, 0.36], ch: 0.56, top: 140, acc: 5.8, grip: 7, taxi: 1 },
+  { name: '警车', len: 4.7, w: 1.84, body: 0.62, cab: [-1.75, 1.05], rake: [0.3, 0.42], ch: 0.54, top: 190, acc: 8.5, grip: 8, cop: 1 },
+  { name: '双层巴士', len: 10.6, w: 2.5, body: 0, cab: [0, 0], rake: [0, 0], ch: 0, top: 85, acc: 3.2, grip: 5.5, bus: 1 },
+  { name: '越野车', len: 4.75, w: 1.92, body: 0.74, cab: [-2.2, 0.95], rake: [0.14, 0.34], ch: 0.62, top: 140, acc: 5.6, grip: 6.5, suv: 1 },
+  { name: '小型车', len: 3.75, w: 1.7, body: 0.58, cab: [-1.72, 0.85], rake: [0.14, 0.4], ch: 0.56, top: 125, acc: 5, grip: 7.5 },
+];
+const PAINTS = [[0.5, 0.05, 0.05], [0.05, 0.12, 0.34], [0.78, 0.78, 0.8], [0.03, 0.03, 0.035], [0.38, 0.4, 0.43], [0.06, 0.24, 0.15], [0.62, 0.62, 0.6], [0.2, 0.22, 0.26], [0.75, 0.74, 0.7], [0.3, 0.08, 0.1]];
+function carMesh(T) {
+  const o = [], hw = T.w / 2, hl = T.len / 2, WH = [1, 1, 1], G = [0.02, 0.03, 0.04], K = [0.025, 0.025, 0.03], SIL = [0.62, 0.64, 0.66], sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  // 轮子：胎面 + 胎侧 + 轮辋边 + 五辐轮毂 + 中心盖
+  const wheel = (cx, cz, r, w, sx) => { const seg = 20, DK = [0.035, 0.035, 0.04], xo = cx + sx * 0.03, xi = cx - sx * w, nn = [sx, 0, 0], P = (a, k, dx) => [xo + sx * (dx || 0), r + Math.sin(a) * r * k, cz + Math.cos(a) * r * k], put = (p, n, cl, m) => o.push(p[0], p[1], p[2], n[0], n[1], n[2], cl[0], cl[1], cl[2], m);
+    const tri = (a, b, c, n, cl, m) => { if (sx < 0) { put(a, n, cl, m); put(b, n, cl, m); put(c, n, cl, m); } else { put(a, n, cl, m); put(c, n, cl, m); put(b, n, cl, m); } };
+    for (let k = 0; k < seg; k++) { const a0 = k / seg * 6.2832, a1 = (k + 1) / seg * 6.2832, n0 = [0, Math.sin(a0), Math.cos(a0)], n1 = [0, Math.sin(a1), Math.cos(a1)], A = P(a0, 1), B = P(a1, 1), C = [xi, B[1], B[2]], D = [xi, A[1], A[2]];
+      if (sx < 0) { put(A, n0, K, 9); put(D, n0, K, 9); put(C, n1, K, 9); put(A, n0, K, 9); put(C, n1, K, 9); put(B, n1, K, 9); } else { put(A, n0, K, 9); put(C, n1, K, 9); put(D, n0, K, 9); put(A, n0, K, 9); put(B, n1, K, 9); put(C, n1, K, 9); }
+      const ring = (k0, k1, d0, d1, cl, m) => { const a = P(a0, k0, d0), b2 = P(a1, k0, d0), c = P(a1, k1, d1), d = P(a0, k1, d1); tri(a, b2, c, nn, cl, m); tri(a, c, d, nn, cl, m); };
+      ring(1, 0.66, 0, 0.012, K, 9); ring(0.66, 0.6, 0.012, 0.02, SIL, 13); const spoke = (k % 4) < 2; ring(0.6, 0.2, spoke ? 0.012 : -0.03, spoke ? 0.016 : -0.03, spoke ? SIL : DK, spoke ? 13 : 9); ring(0.2, 0, 0.022, 0.03, SIL, 13); } };
+  if (T.bus) {                                             // 双层巴士本来就是方的：车身 + 两圈车窗
+    const y0 = 0.36, y1 = 4.38; box(o, -hw, y0, -hl, hw, y1, hl, WH, 0); box(o, -hw + 0.05, 0.22, -hl + 0.2, hw - 0.05, y0, hl - 0.2, K, 9);
+    for (const [a, b] of [[1.45, 2.45], [2.95, 3.95]]) { box(o, -hw - 0.012, a, -hl + 0.5, hw + 0.012, b, hl - 0.9, G, 12); box(o, -hw + 0.12, a - (a < 2 ? 0.3 : 0), hl - 0.012, hw - 0.12, b, hl + 0.014, G, 12); box(o, -hw + 0.3, a, -hl - 0.014, hw - 0.3, b, -hl + 0.012, G, 12); }
+    for (const z of [hl - 2.3, -hl + 2.2]) for (const sx of [-1, 1]) wheel(sx * (hw - 0.01), z, 0.5, 0.3, sx);
+    for (const sx of [-1, 1]) { box(o, sx * (hw - 0.5) - 0.2, 0.62, hl - 0.01, sx * (hw - 0.5) + 0.2, 0.86, hl + 0.03, [1, 0.95, 0.8], 7); box(o, sx * (hw - 0.4) - 0.14, 0.7, -hl - 0.03, sx * (hw - 0.4) + 0.14, 1.2, -hl + 0.01, [1, 0.08, 0.04], 7); }
+    box(o, -0.9, 4.0, hl - 0.005, 0.9, 4.3, hl + 0.02, [1, 0.75, 0.2], 7); return o;
+  }
+  // 下车身：一串截面。两头收窄、收低，腰线以上向内收一点
+  const y0 = 0.26, belt = y0 + T.body + 0.12, c0 = T.cab[0], c1 = T.cab[1], rings = [], NS = 16;
+  for (let k = 0; k <= NS; k++) { const t = k / NS * 2 - 1, z = t * hl, e = Math.pow(Math.abs(t), 5), w = hw * (1 - 0.1 * Math.pow(Math.abs(t), 3) - 0.2 * e * e), yb = y0 + 0.16 * e, hood = T.van ? 0 : t > 0 ? sm(c1, hl, z) * 0.17 * (0.5 + T.body) : sm(c0, -hl, z) * 0.1, yt = belt - hood - 0.2 * e * e * (1 + T.body);
+    rings.push([[0, yb, z], [w * 0.8, yb, z], [w * 0.97, yb + 0.07, z], [w, lerp(yb, yt, 0.42), z], [w * 0.985, lerp(yb, yt, 0.75), z], [w * 0.93, yt - 0.035, z], [w * 0.72, yt, z], [0, yt + 0.012, z], [-w * 0.72, yt, z], [-w * 0.93, yt - 0.035, z], [-w * 0.985, lerp(yb, yt, 0.75), z], [-w, lerp(yb, yt, 0.42), z], [-w * 0.97, yb + 0.07, z], [-w * 0.8, yb, z]]); }
+  loft(o, rings, (si, ri) => ri === 0 || ri === 13 || ri === 1 || ri === 12 ? [K, 9] : [WH, 0], [WH, 0]);
+  // 车舱：从后挡根部升到车顶再从前挡落下。侧面和前后挡是玻璃，车顶和立柱是漆面
+  const cr = [], MS = 12, pil = T.taxi ? [SIL, 13] : [WH, 0], roofCol = T.taxi ? [SIL, 13] : T.van ? [[0.1, 0.4, 0.2], 9] : [WH, 0], bw = hw * 0.93, tw = hw * (T.van ? 0.9 : 0.74), hgt = k => Math.min(sm(0, T.rake[0], k / MS), sm(0, T.rake[1], 1 - k / MS));
+  for (let k = 0; k <= MS; k++) { const z = lerp(c0, c1, k / MS), hg = hgt(k), top = belt - 0.03 + T.ch * hg, wd = lerp(bw, tw, hg), yb = belt - 0.05; cr.push([[0, yb, z], [bw * 0.9, yb, z], [lerp(bw, wd, 0.5), lerp(yb, top, 0.55), z], [wd, lerp(yb, top, 0.9), z], [wd * 0.8, top, z], [0, top + 0.02 * hg, z], [-wd * 0.8, top, z], [-wd, lerp(yb, top, 0.9), z], [-lerp(bw, wd, 0.5), lerp(yb, top, 0.55), z], [-bw * 0.9, yb, z]]); }
+  const flat = k => hgt(k) > 0.985;
+  loft(o, cr, (si, ri) => { if (ri === 0 || ri === 9) return null; const a = flat(si), b = flat(si + 1); if (ri >= 3 && ri <= 6) return a && b ? roofCol : [G, 12]; if (a !== b) return pil; if (a && b && (T.van ? si % 3 === 1 : si === Math.round(MS * 0.52))) return pil; return [G, 12]; }, null);
+  const wr = T.van || T.suv ? 0.4 : T.len < 4 ? 0.31 : 0.34; for (const sx of [-1, 1]) for (const z of [hl - 0.92 - (T.van ? 0.3 : 0), -hl + 0.95 + (T.van ? 0.5 : 0)]) { wheel(sx * (hw + 0.005), z, wr, 0.24, sx); const ax = sx * (hw - 0.012), Ra = wr + 0.075, AK = [0.012, 0.012, 0.014]; for (let k = 0; k < 12; k++) { const a0 = -0.3 + k / 12 * 3.74, a1 = -0.3 + (k + 1) / 12 * 3.74, P0 = [ax, wr + Math.sin(a0) * Ra, z + Math.cos(a0) * Ra], P1 = [ax, wr + Math.sin(a1) * Ra, z + Math.cos(a1) * Ra], Cn = [ax, wr, z]; for (const q of (sx < 0 ? [P0, P1, Cn] : [P0, Cn, P1])) o.push(q[0], q[1], q[2], sx, 0, 0, AK[0], AK[1], AK[2], 9); } }
+  const ye = belt - 0.2 * (1 + T.body) - (T.van ? 0 : 0.17 * (0.5 + T.body)), fw = hw * 0.7;
+  for (const sx of [-1, 1]) { box(o, sx * fw * 0.72 - 0.2, ye - 0.16, hl - 0.07, sx * fw * 0.72 + 0.2, ye - 0.04, hl - 0.005, [1, 0.95, 0.8], 7); box(o, sx * fw * 0.7 - 0.24, belt - 0.42 - 0.1 * T.body, -hl + 0.005, sx * fw * 0.7 + 0.24, belt - 0.3 - 0.1 * T.body, -hl + 0.06, [1, 0.08, 0.04], 7); }
+  box(o, -fw * 0.42, ye - 0.3, hl - 0.06, fw * 0.42, ye - 0.16, hl - 0.004, K, 9); box(o, -0.26, y0 + 0.2, -hl + 0.004, 0.26, y0 + 0.32, -hl + 0.05, [0.9, 0.74, 0.08], 9); box(o, -0.26, y0 + 0.17, hl - 0.075, 0.26, y0 + 0.29, hl - 0.03, [0.9, 0.9, 0.88], 9);      /* 香港车牌：前白后黄 */
+  { const mz = lerp(c0, c1, 1 - T.rake[1] * 0.75), mx = hw * 0.94; for (const sx of [-1, 1]) { box(o, sx > 0 ? mx : -mx - 0.2, belt - 0.02, mz - 0.07, sx > 0 ? mx + 0.2 : -mx, belt + 0.11, mz + 0.06, WH, 0); box(o, sx > 0 ? mx + 0.02 : -mx - 0.18, belt, mz - 0.085, sx > 0 ? mx + 0.18 : -mx - 0.02, belt + 0.09, mz - 0.07, G, 12); } }      /* 后视镜 */
+  box(o, -hw * 0.8, y0 + 0.02, hl - 0.12, hw * 0.8, y0 + 0.13, hl - 0.03, K, 9); box(o, -hw * 0.8, y0 + 0.02, -hl + 0.03, hw * 0.8, y0 + 0.13, -hl + 0.12, K, 9); for (const sx of [-1, 1]) box(o, sx * 0.5 - 0.04, y0 - 0.02, -hl + 0.02, sx * 0.5 + 0.04, y0 + 0.06, -hl + 0.2, SIL, 13);      /* 保险杠下沿、排气管 */
+  const cz = (c0 + c1) / 2 - 0.1, yr = belt - 0.03 + T.ch; if (T.taxi) box(o, -0.24, yr, cz - 0.09, 0.24, yr + 0.15, cz + 0.09, [1, 0.9, 0.5], 7);
+  if (T.cop) { box(o, -0.5, yr, cz - 0.1, -0.02, yr + 0.12, cz + 0.1, [1, 0.1, 0.1], 7); box(o, 0.02, yr, cz - 0.1, 0.5, yr + 0.12, cz + 0.1, [0.1, 0.25, 1], 7); }
+  return o;
+}
+
+/* ---------- 5 · 世界里会动的东西 ---------- */
+const W = { time: 17.3, t: 0, cars: [], peds: [], tokens: [], cash: 0, got: {}, heat: 0, heatT: 0, bustT: 0, job: null, jobPick: null, paused: true, started: false, fx: [] };
+const P = { x: City.spawn[0], y: CURB, z: City.spawn[1], vy: 0, h: 0, sp: 0, phase: 0, car: null, onGround: true };
+const Cam = { yaw: 0.6, pitch: 0.28, dist: 7, x: 0, y: 5, z: 0, tx: 0, ty: 0, tz: 0, userT: 0 };
+const In = { keys: {}, mx: 0, my: 0, sx: 0, sy: 0, stick: null, look: null, use: false, jump: false, brake: false, touch: false, fire: false };
+const R2 = rng(77);
+// 马路网：交叉口是格点，车沿着靠右的车道走，到路口随机直行或转弯
+const nodePos = (i, j) => [XS[i], ZS[j]];
+const segOpen = (i, j, di, dj) => { const ni = i + di, nj = j + dj; if (i < 0 || j < 0 || i > GRID || j > GRID || ni < 0 || nj < 0 || ni > GRID || nj > GRID) return false; return di ? !City.ch[j][Math.min(i, ni)] : !City.cv[i][Math.min(j, nj)]; };
+// 走上一段新路：记下这段路多长、多宽，挑一条车道（多车道的路，最靠边那条留给路边停车）
+function newRoute(c, i, j, di, dj) { c.i = i; c.j = j; c.di = di; c.dj = dj; c.s = 0; const hw = di ? HZ[j] : HX[i], n = lanesOf(hw); c.lane = n > 1 ? (R2() * (n - 1)) | 0 : 0; c.lo = (c.lane + 0.5) * (hw - 0.45) / n + (n === 1 ? 0.1 : 0); c.len = di ? Math.abs(XS[i + di] - XS[i]) : Math.abs(ZS[j + dj] - ZS[j]); c.fast = hw >= 8; }
+function routeNext(c) { const ni = c.i + c.di, nj = c.j + c.dj, opts = []; for (const [a, b] of [[c.di, c.dj], [c.dj, -c.di], [-c.dj, c.di]]) if (segOpen(ni, nj, a, b)) opts.push([a, b], ...(a === c.di && b === c.dj ? [[a, b], [a, b]] : [])); const o = opts.length ? opts[(R2() * opts.length) | 0] : [-c.di, -c.dj]; newRoute(c, ni, nj, o[0], o[1]); }
+// 车道上的目标点：沿当前路段走了 s 米时应该在哪。靠左行驶：车道在行进方向的左边
+function lanePoint(c, s) { const rx = -c.dj, rz = c.di; return [XS[c.i] + c.di * s - rx * c.lo, ZS[c.j] + c.dj * s - rz * c.lo]; }
+function randSeg() { for (let k = 0; k < 60; k++) { const horiz = R2() < 0.5, i = (R2() * (GRID + 1)) | 0, j = (R2() * (GRID + 1)) | 0, dir = R2() < 0.5 ? 1 : -1, di = horiz ? dir : 0, dj = horiz ? 0 : dir; if (segOpen(i, j, di, dj)) { const c = {}; newRoute(c, i, j, di, dj); return c; } } return null; }
+function spawnCar(type, x, z, h, ai) { const T = CAR_TYPES[type], c = { type, T, x, z, y: 0, h, vx: 0, vz: 0, steer: 0, ai: ai || null, col: T.taxi ? [0.62, 0.04, 0.04] : T.cop ? [0.88, 0.88, 0.9] : T.van ? [0.86, 0.82, 0.62] : T.bus ? [[0.7, 0.06, 0.06], [0.85, 0.66, 0.1], [0.86, 0.86, 0.84]][(R2() * 3) | 0] : PAINTS[(R2() * PAINTS.length) | 0], off: T.len / 2 - T.w / 2, rad: T.w / 2 + 0.03, roll: 0, pitch: 0, brake: false, stuck: 0, i: 0, j: 0, di: 1, dj: 0, s: 0, hp: 100, dead: false }; W.cars.push(c); return c; }
+function spawnTraffic(far) {
+  for (let k = 0; k < 30; k++) { const c = randSeg(); if (!c) return; if (c.len < 46) continue; const s = 18 + R2() * (c.len - 36), p = lanePoint(c, s), d = Math.hypot(p[0] - P.x, p[1] - P.z);
+    if (d < (far ? 130 : 40) || d > 300 || W.cars.some(o => Math.hypot(o.x - p[0], o.z - p[1]) < 12)) continue; const q = R2(), t = q < 0.22 ? 3 : q < 0.32 ? 5 : q < 0.43 ? 2 : q < 0.48 ? 1 : q < 0.63 ? 6 : q < 0.76 ? 7 : 0, car = spawnCar(t, p[0], p[1], Math.atan2(c.di, c.dj), { mode: 'drive' }); Object.assign(car, { i: c.i, j: c.j, di: c.di, dj: c.dj, lane: c.lane, lo: c.lo, len: c.len, fast: c.fast, s }); car.vx = c.di * 8; car.vz = c.dj * 8; return car; }
+}
+// 每个行人的长相是随机的
+function pedLook() { const f = R2() < 0.5, old = R2() < 0.14, q = R2(), bagC = [[0.08, 0.08, 0.1], [0.45, 0.12, 0.1], [0.12, 0.2, 0.42], [0.55, 0.42, 0.25], [0.8, 0.78, 0.7]][(R2() * 5) | 0], warm = R2() < 0.5;
+  return { s: (f ? 0.9 : 0.97) + R2() * 0.12 - (old ? 0.04 : 0), w: 0.9 + R2() * 0.28, hair: old ? [0.7, 0.7, 0.7] : [[0.06, 0.05, 0.05], [0.14, 0.09, 0.05], [0.25, 0.14, 0.07], [0.03, 0.03, 0.04]][(R2() * 4) | 0], longH: f && R2() < 0.6, bald: !f && R2() < 0.08, hat: R2() < 0.1 ? [[0.1, 0.12, 0.2], [0.6, 0.1, 0.1], [0.85, 0.82, 0.7]][(R2() * 3) | 0] : null,
+    skirt: f && R2() < 0.35, skirtC: [0.15 + R2() * 0.6, 0.12 + R2() * 0.4, 0.15 + R2() * 0.5], shorts: R2() < 0.25, sleeve: R2() < (warm ? 0.3 : 0.6), brave: R2() < 0.12, caller: R2() < 0.22, timid: R2() < 0.3, hp: 50, bag: q < 0.22 ? 1 : q < 0.4 ? 2 : q < 0.52 ? 3 : 0, bagC, phone: R2() < 0.16, shoe: R2() < 0.3 ? [0.85, 0.85, 0.83] : [0.08, 0.07, 0.07], wait: 0 }; }
+function spawnPed(far) { for (let k = 0; k < 20; k++) { const B = City.blocks[(R2() * City.blocks.length) | 0], g = B.g, side = (R2() * 4) | 0, x = side === 0 ? g.x0 - 1 : side === 1 ? g.x1 + 1 : lerp(g.x0 - 1, g.x1 + 1, R2()), z = side === 2 ? g.z0 - 1 : side === 3 ? g.z1 + 1 : lerp(g.z0 - 1, g.z1 + 1, R2()), d = Math.hypot(x - P.x, z - P.z); if (d < (far ? 70 : 12) || d > 190) continue; const dir = R2() < 0.5 ? 1 : -1; W.peds.push({ x, z, y: CURB, h: 0, B, side, dir, sp: 1.1 + R2() * 0.7, phase: R2() * 6, shirt: [0.2 + R2() * 0.7, 0.2 + R2() * 0.6, 0.2 + R2() * 0.7], pants: [0.1 + R2() * 0.25, 0.1 + R2() * 0.25, 0.14 + R2() * 0.3], skin: [[0.9, 0.72, 0.6], [0.72, 0.52, 0.38], [0.5, 0.34, 0.24], [0.96, 0.8, 0.68]][(R2() * 4) | 0], fall: 0, flee: 0, ...pedLook() }); return; } }
+function carStep(c, thr, steer, hand, dt) {
+  const T = c.T, fx = Math.sin(c.h), fz = Math.cos(c.h); let vf = c.vx * fx + c.vz * fz, vl = c.vx * fz - c.vz * fx;
+  c.steer = lerp(c.steer, steer, 1 - Math.exp(-dt * 7));
+  const top = T.top / 3.6 * (c.hp < 30 ? 0.6 : 1); c.thS = thr > 0 ? lerp(c.thS || 0, thr, 1 - Math.exp(-dt * 2.4)) : 0;      /* 油门是慢慢踩下去的；起步柔，中段有劲，接近极速时越来越慢 */
+  if (thr > 0) vf += T.acc * c.thS * dt * clamp(1.15 - vf / top, 0, 1) * (0.55 + 0.45 * Math.min(1, Math.abs(vf) / 6)); else if (thr < 0) vf += (vf > 0.5 ? -22 : -T.acc * 0.6 * clamp(1 + vf / (top * 0.3), 0, 1)) * -thr * dt;
+  vf -= vf * (0.03 + (hand ? 1.4 : 0)) * dt + Math.sign(vf) * Math.min(Math.abs(vf), 0.4 * dt); c.brake = thr < 0 && vf > 0.5 || hand;
+  const sa = c.steer * 0.62 / (1 + Math.abs(vf) * 0.045 + vf * vf * 0.0035); c.h += vf * Math.tan(sa) / (T.len * 0.6) * dt * (hand ? 1.35 : 1);
+  vl *= Math.exp(-dt * (hand ? 1.6 : T.grip)); const skid = Math.abs(vl) > 3.2 && Math.abs(vf) > 5;
+  const nfx = Math.sin(c.h), nfz = Math.cos(c.h); c.vx = nfx * vf + nfz * vl; c.vz = nfz * vf - nfx * vl; c.x += c.vx * dt; c.z += c.vz * dt;
+  // 撞楼、撞树：车头车尾各一个圆
+  let crash = 0; for (const s of [1, -1]) { const o = { x: c.x + nfx * s * c.off, z: c.z + nfz * s * c.off, nx: 0, nz: 0 }, ox = o.x, oz = o.z; if (pushOut(o, c.rad)) { c.x += o.x - ox; c.z += o.z - oz; const vn = c.vx * o.nx + c.vz * o.nz; if (vn < 0) { c.vx -= o.nx * vn * 1.3; c.vz -= o.nz * vn * 1.3; crash = Math.max(crash, -vn); } } }
+  if (crash > 4) { c.hp = Math.max(5, c.hp - crash * 1.4); c.vx *= 0.7; c.vz *= 0.7; }
+  const gy = groundY(c.x, c.z); c.y = lerp(c.y, gy, 1 - Math.exp(-dt * 14)); c.roll = lerp(c.roll, -c.steer * Math.min(Math.abs(vf), 22) * 0.004 - vl * 0.012, 1 - Math.exp(-dt * 8)); c.pitch = lerp(c.pitch, clamp(-thr * 0.02 * (vf < top * 0.8 ? 1 : 0.3), -0.03, 0.04), 1 - Math.exp(-dt * 6));
+  return { vf, skid, crash };
+}
+function aiCar(c, dt) {
+  const A = c.ai, seg = c.len || 80; let thr = 0, steer = 0, hand = false; const fx = Math.sin(c.h), fz = Math.cos(c.h), vf = c.vx * fx + c.vz * fz;
+  if (A.mode === 'parked') { carStep(c, 0, 0, true, dt); return; }
+  let tx, tz, want;
+  if (A.mode === 'chase') { const T = P.car || P; tx = T.x; tz = T.z; want = 44; const d = Math.hypot(tx - c.x, tz - c.z); if (d < 9) want = 3; }
+  else {
+    // 自己在路段上走到哪了：投影到路段方向
+    const [nx, nz] = nodePos(c.i, c.j); const nh = c.di ? HX[c.i + c.di] : HZ[c.j + c.dj]; c.s = (c.x - nx) * c.di + (c.z - nz) * c.dj; if (c.s > seg - nh - 3) routeNext(c);
+    const p = lanePoint(c, Math.min(c.s + 7 + vf * 0.5, seg + 4)); tx = p[0]; tz = p[1]; want = c.s > seg - nh - 16 || c.s < nh + 2 ? 6.5 : c.fast ? 16 : 12.5; if (c.scared > 0) { c.scared -= dt; want = 24; }      /* 听到枪声的司机会踩油门冲走 */
+    for (const o of W.cars) { if (o === c) continue; const dx = o.x - c.x, dz = o.z - c.z, f = dx * fx + dz * fz, l = dx * fz - dz * fx; if (f > 0 && f < 9 + vf * 0.9 && Math.abs(l) < 2.1) want = Math.min(want, f < 7 ? 0 : (f - 7) * 1.2); }
+    const dx = P.x - c.x, dz = P.z - c.z, f = dx * fx + dz * fz, l = dx * fz - dz * fx; if (!P.car && f > 0 && f < 8 + vf * 0.8 && Math.abs(l) < 1.8) want = 0;
+  }
+  const dh = angDiff(Math.atan2(tx - c.x, tz - c.z), c.h); steer = clamp(dh * 2.2, -1, 1); if (Math.abs(dh) > 0.9 && A.mode !== 'chase') want = Math.min(want, 4);
+  thr = vf < want ? (A.mode === 'chase' ? 1 : 0.55) : vf > want + 1.5 ? -0.7 : 0; if (want === 0 && vf < 0.4) { thr = 0; hand = true; }
+  if (c.stuck > 0) { c.stuck -= dt; thr = -0.6; steer = -steer; }
+  const r = carStep(c, thr, steer, hand, dt); if (r.crash > 1 || (want > 2 && Math.abs(r.vf) < 0.3)) { A.jam = (A.jam || 0) + dt; if (A.jam > 2.5) { c.stuck = 1.3; A.jam = 0; } } else A.jam = 0;
+}
+function carsCollide(dt) {
+  const C = W.cars; for (let a = 0; a < C.length; a++) for (let b = a + 1; b < C.length; b++) { const A = C[a], B = C[b], dx = B.x - A.x, dz = B.z - A.z;
+    const lim = A.off + B.off + 3; if (dx > lim || dx < -lim || dz > lim || dz < -lim) continue; const rr = A.rad + B.rad;
+    for (const sa of A.T.bus ? [1, 0, -1] : [1, -1]) for (const sb of B.T.bus ? [1, 0, -1] : [1, -1]) { const ax = A.x + Math.sin(A.h) * sa * A.off, az = A.z + Math.cos(A.h) * sa * A.off, bx = B.x + Math.sin(B.h) * sb * B.off, bz = B.z + Math.cos(B.h) * sb * B.off, ex = bx - ax, ez = bz - az, d = Math.hypot(ex, ez); if (d >= rr || d < 1e-4) continue; const nx = ex / d, nz = ez / d, pen = (rr - d) / 2, pa = A.ai && A.ai.mode === 'parked' ? 0.2 : 1, pb = B.ai && B.ai.mode === 'parked' ? 0.2 : 1;
+      A.x -= nx * pen * pa; A.z -= nz * pen * pa; B.x += nx * pen * pb; B.z += nz * pen * pb; const rv = (B.vx - A.vx) * nx + (B.vz - A.vz) * nz; if (rv < 0) { const j = -rv * 0.75; A.vx -= nx * j * pa; A.vz -= nz * j * pa; B.vx += nx * j * pb; B.vz += nz * j * pb; if (-rv > 4) { const mine = A === P.car || B === P.car; if (mine) { Snd.crash(Math.min(1, -rv / 20)); addHeat(0.25, '撞车'); P.car.hp = Math.max(5, P.car.hp - -rv); } const o = A === P.car ? B : A; if (mine && o.ai && o.ai.mode === 'parked') o.ai.mode = 'wreck'; } } } }
+}
+function addHeat(v, why) { const seen = W.cars.some(c => c.T.cop && c !== P.car && Math.hypot(c.x - P.x, c.z - P.z) < 120) || W.peds.some(p => p.role === 'cop' && !(p.dead > 0) && Math.hypot(p.x - P.x, p.z - P.z) < 70); if (!seen && W.heat < 1 && v < 0.5 && R2() < 0.5) return; W.heat = Math.min(5.99, W.heat + v); W.heatT = 14; }      // 小事没人看见可能没人管；附近有警察就一定记上
+function nearestCar() { let best = null, bd = 1e9; for (const c of W.cars) { const d = Math.hypot(c.x - P.x, c.z - P.z) - c.off; if (d < 2.7 && d < bd) { bd = d; best = c; } } return best; }
+function enterExit() {
+  if (P.car) { const c = P.car; if (Math.hypot(c.vx, c.vz) > 4) return toast('先把车停下'); const sx = Math.cos(c.h), sz = -Math.sin(c.h); for (const s of [1, -1]) { const o = { x: c.x - sx * s * (c.T.w / 2 + 0.8), z: c.z - sz * s * (c.T.w / 2 + 0.8) }; const B = blockAt(o.x, o.z); if (B && B.boxes.some(b => o.x > b.x0 - 0.4 && o.x < b.x1 + 0.4 && o.z > b.z0 - 0.4 && o.z < b.z1 + 0.4)) continue; P.x = o.x; P.z = o.z; P.y = groundY(o.x, o.z); P.h = c.h; c.ai = { mode: 'parked' }; P.car = null; Cam.dist = 7; Snd.engine(0, 0); return; } return toast('车门被挡住了'); }
+  const c = nearestCar(); if (!c) return; if (c.wreck) return toast('这辆车已经报废了'); if (Math.hypot(c.vx, c.vz) > 5) return toast('车太快了，上不去');
+  if (c.ai && (c.ai.mode === 'drive' || c.ai.mode === 'chase')) {      // 车里的人被拽下车：先摔在地上，爬起来就惊慌地跑开；大车上的乘客也一起逃
+    const rx = -Math.cos(c.h), rz = Math.sin(c.h), n = c.T.bus ? 5 : c.T.van ? 3 : (c.T.taxi ? R2() < 0.6 : R2() < 0.25) ? 2 : 1;
+    for (let k = 0; k < n; k++) { const sd = k % 2 ? -1 : 1, off = (k >> 1) * 1.7 - 0.5, x = c.x + rx * sd * (c.T.w / 2 + 0.75) - Math.sin(c.h) * off, z = c.z + rz * sd * (c.T.w / 2 + 0.75) - Math.cos(c.h) * off, cop = c.T.cop;
+      W.peds.push({ x, z, y: groundY(x, z), h: Math.atan2(rx * sd, rz * sd), B: blockAt(x, z), side: 0, dir: 1, sp: 1.5, phase: R2() * 6, shirt: cop ? [0.16, 0.2, 0.34] : [0.2 + R2() * 0.7, 0.2 + R2() * 0.6, 0.2 + R2() * 0.7], pants: cop ? [0.08, 0.1, 0.18] : [0.1 + R2() * 0.25, 0.1 + R2() * 0.25, 0.14 + R2() * 0.3], skin: [[0.9, 0.72, 0.6], [0.72, 0.52, 0.38], [0.96, 0.8, 0.68]][(R2() * 3) | 0], flee: 0, ...pedLook(), phone: false, bag: 0, fall: 0.55 + k * 0.18, fh: Math.atan2(rx * sd, rz * sd), panic: 9 + R2() * 4 }); }
+    for (const p of W.peds) if (!p.role && !(p.dead > 0) && !(p.panic > 0) && Math.hypot(p.x - c.x, p.z - c.z) < 18) { p.panic = 2.5 + R2() * 3; p.wait = 0; }
+    toast(n > 1 ? '车上的人被赶下车，四散逃开' : '司机被赶下车，吓得跑了'); Snd.tone(1150, 0.28, 0.12); setTimeout(() => Snd.tone(980, 0.3, 0.1), 160); addHeat(c.T.cop ? 1.2 : 0.6, '抢车'); }
+  if (c.T.cop) addHeat(1, '偷警车'); c.ai = null; P.car = c; Cam.dist = 5 + c.T.len; Snd.door();
+}
+
+/* 声音：全部现场合成 */
+const Snd = { ctx: null, init() { if (this.ctx) return; try { const A = this.ctx = new (window.AudioContext || window.webkitAudioContext)(), g = this.master = A.createGain(); g.gain.value = 0.5; g.connect(A.destination); const o = this.eo = A.createOscillator(), o2 = this.eo2 = A.createOscillator(), f = this.ef = A.createBiquadFilter(), eg = this.eg = A.createGain(); o.type = 'triangle'; o2.type = 'sine'; const o3 = this.eo3 = A.createOscillator(), g3 = A.createGain(); o3.type = 'sawtooth'; g3.gain.value = 0.13; o3.connect(g3); g3.connect(f); o3.start(); f.Q.value = 0.6; f.type = 'lowpass'; f.frequency.value = 400; eg.gain.value = 0; o.connect(f); o2.connect(f); f.connect(eg); eg.connect(g); o.start(); o2.start(); const len = A.sampleRate, b = this.nb = A.createBuffer(1, len, len), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; const n = A.createBufferSource(); n.buffer = b; n.loop = true; const nf = this.sf = A.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 1800; nf.Q.value = 3; const sg = this.sg = A.createGain(); sg.gain.value = 0; n.connect(nf); nf.connect(sg); sg.connect(g); n.start(); } catch (e) { this.ctx = null; } },
+  // 引擎声：柔和的三角波 + 低八度的正弦波打底，再掺一点点锯齿波。分 5 个挡，转速在每个挡里慢慢爬高，换挡时落下来
+  engine(v, load, top) { if (!this.ctx) return; const t = this.ctx.currentTime, vn = clamp(v / (top || 30), 0, 1.05) * 5, gear = Math.min(4, Math.floor(vn)), rpm = v < 0.3 ? 0.16 : 0.3 + 0.7 * clamp((vn - gear) * (gear ? 1 : 0.8) + (gear ? 0 : 0.1), 0, 1), f = 34 + rpm * 78; this.eo.frequency.setTargetAtTime(f, t, 0.09); this.eo2.frequency.setTargetAtTime(f * 0.5, t, 0.09); this.eo3.frequency.setTargetAtTime(f, t, 0.09); this.ef.frequency.setTargetAtTime(170 + rpm * 420 + load * 220, t, 0.12); this.eg.gain.setTargetAtTime(P.car ? 0.05 + load * 0.035 + rpm * 0.02 : 0, t, 0.12); },
+  skid(on) { if (this.ctx) this.sg.gain.setTargetAtTime(on ? 0.16 : 0, this.ctx.currentTime, 0.06); },
+  burst(freq, dur, vol, q) { if (!this.ctx) return; const A = this.ctx, n = A.createBufferSource(), f = A.createBiquadFilter(), g = A.createGain(); n.buffer = this.nb; f.type = 'lowpass'; f.frequency.value = freq; f.Q.value = q || 1; g.gain.value = vol; g.gain.exponentialRampToValueAtTime(0.001, A.currentTime + dur); n.connect(f); f.connect(g); g.connect(this.master); n.start(); n.stop(A.currentTime + dur); },
+  crash(v) { this.burst(500 + v * 900, 0.35, 0.3 + v * 0.5); }, door() { this.burst(300, 0.12, 0.3); },
+  tone(f, d, v) { if (!this.ctx) return; const A = this.ctx, o = A.createOscillator(), g = A.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.value = v || 0.2; g.gain.exponentialRampToValueAtTime(0.001, A.currentTime + d); o.connect(g); g.connect(this.master); o.start(); o.stop(A.currentTime + d); },
+  // 枪声三层：很短的一声脆响 + 一下往下掉的闷响 + 一小段回声
+  shot(v, big) { if (!this.ctx) return; const A = this.ctx, t = A.currentTime, n = A.createBufferSource(), hp = A.createBiquadFilter(), g = A.createGain(); n.buffer = this.nb; hp.type = 'highpass'; hp.frequency.value = big ? 700 : 1500; g.gain.setValueAtTime(0.55 * v, t); g.gain.exponentialRampToValueAtTime(0.001, t + (big ? 0.11 : 0.06)); n.connect(hp); hp.connect(g); g.connect(this.master); n.start(t, Math.random() * 0.5); n.stop(t + 0.15);
+    const o = A.createOscillator(), og = A.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(big ? 130 : 190, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.13); og.gain.setValueAtTime(0.6 * v, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.16); o.connect(og); og.connect(this.master); o.start(t); o.stop(t + 0.18); this.burst(big ? 700 : 1100, big ? 0.6 : 0.42, 0.13 * v, 0.5); },
+  coin() { this.tone(880, 0.12, 0.2); setTimeout(() => this.tone(1320, 0.25, 0.2), 90); },
+};
+
+/* ---------- 6 · 任务、信标、界面 ---------- */
+// 街名取自尖沙咀一带（位置只是大致对应，不是实景地图）
+const ST_NS = ['海旁路', '港威徑', '廣東道', '九龍公園徑', '漢口道', '亞士厘道', '樂道', '彌敦道', '加拿芬道', '寶勒巷', '漆咸道南', '科學館道', '麼地道', '康莊道', '紅磡繞道'], ST_EW = ['佐敦道', '寶靈街', '柯士甸道', '山林道', '金巴利道', '加連威老道', '金馬倫道', '海防道', '宜昌街', '北京道', '河內道', '中間道', '梳士巴利道', '星光大道', '海濱長廊'];
+let toastT = 0; function toast(s) { const e = $('toast'); e.textContent = s; e.classList.add('on'); toastT = 2.2; }
+function save() { try { localStorage.setItem('harborcity.v1', JSON.stringify({ cash: W.cash, got: W.got, has: W.has, ammo: W.ammo, armor: W.armor })); } catch (e) { } }
+function load() { try { const d = JSON.parse(localStorage.getItem('harborcity.v1') || 'null'); if (d) { W.cash = d.cash | 0; W.got = d.got || {}; if (d.has) Object.assign(W.has, d.has); if (d.ammo) Object.assign(W.ammo, d.ammo); W.armor = d.armor | 0; } } catch (e) { } }
+function newJobPick() { for (let k = 0; k < 50; k++) { const s = City.spots[(R2() * City.spots.length) | 0], d = Math.hypot(s[0] - P.x, s[1] - P.z); if (d > 90 && d < 330) { W.jobPick = { x: s[0], z: s[1] }; return; } } const s = City.spots[0]; W.jobPick = { x: s[0], z: s[1] }; }
+function startJob() { for (let k = 0; k < 80; k++) { const s = City.spots[(R2() * City.spots.length) | 0], d = Math.hypot(s[0] - P.x, s[1] - P.z); if (d > 280 && d < 760) { W.job = { x: s[0], z: s[1], dist: d, t: 22 + d / 9, pay: Math.round(60 + d * 0.5) }; W.jobPick = null; toast('接到快递单：送到黄色光柱'); Snd.tone(660, 0.2); return; } } }
+function hud() {
+  $('cash').textContent = '$' + W.cash.toLocaleString('en-US'); const h = Math.floor(W.time), m = Math.floor((W.time - h) * 60); $('clock').textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  { let nm = ''; const ci = colOf(P.x), cj = rowOf(P.z); for (const i of [ci, ci + 1]) if (Math.abs(P.x - XS[i]) < HX[i] + 2.5 && !City.cv[i][cj]) nm = ST_NS[i]; if (!nm) for (const j of [cj, cj + 1]) if (Math.abs(P.z - ZS[j]) < HZ[j] + 2.5 && !City.ch[j][ci]) nm = ST_EW[j]; $('street').textContent = nm; }
+  const st = Math.floor(W.heat); $('stars').textContent = '★'.repeat(st) + (st ? '☆'.repeat(5 - st) : ''); $('tok').textContent = '信标 ' + Object.keys(W.got).length + ' / ' + W.tokens.length;
+  const sp = $('speed'); sp.hidden = !P.car; if (P.car) sp.firstChild.textContent = Math.round(Math.hypot(P.car.vx, P.car.vz) * 3.6);
+  { const w = WEPS[W.wep]; $('hpb').style.width = Math.max(0, W.hp) + '%'; $('hpb').style.background = W.hp < 30 ? '#ff5a4d' : '#4fd86a'; $('arb').style.width = W.armor + '%'; $('wep').textContent = w.name + (w.melee ? '' : ' · ' + W.ammo[w.id] + ' 发'); $('cross').hidden = !!P.car || w.melee; $('bFire').textContent = P.car ? '喇叭' : w.melee ? '打' : '开枪'; $('bWep').textContent = w.name; }
+  const j = $('job'); if (W.rob) { j.hidden = false; j.innerHTML = '正在装钱 <b>' + Math.round(W.rob.t / W.rob.need * 100) + '%</b>' + (inHall() ? '' : ' · 回到营业厅里！'); } else if (W.loot > 0) { j.hidden = false; j.innerHTML = '赃款 <b>$' + W.loot.toLocaleString('en-US') + '</b> · 甩掉警察（通缉清零）才算到手'; } else if (W.job) { j.hidden = false; j.innerHTML = '快递：送到黄色光柱 · 还剩 <b>' + Math.max(0, Math.ceil(W.job.t)) + '</b> 秒 · <b>' + Math.round(Math.hypot(W.job.x - P.x, W.job.z - P.z)) + '</b> 米 · 酬劳 <b>$' + W.job.pay + '</b>'; } else j.hidden = true;
+  const tip = $('tip'), c = P.car ? null : nearestCar(), nearPick = W.jobPick && Math.hypot(W.jobPick.x - P.x, W.jobPick.z - P.z) < 30; let s = ''; if (c) s = (In.touch ? '点“上车”' : '按 F') + ' 上车 · ' + c.T.name; else if (nearPick && !W.job) s = '走进蓝色光柱接快递单'; { const F = In.touch ? '点“上车”' : '按 F'; if (!P.car) { if (inHall() && !W.rob) s = W.robCd > 0 ? '金库刚被搬空，过一阵再来' : F + ' 抢银行（要先亮出武器）'; else if (Math.hypot(P.x - City.shop.x, P.z - City.shop.z) < 3) s = F + ' 进枪店'; else if (W.peds.some(p => p.hands > 0 && !p.role && !(p.dead > 0) && Math.hypot(p.x - P.x, p.z - P.z) < 2.6)) s = F + ' 让他把钱交出来'; } }
+  tip.hidden = !s; tip.textContent = s; $('bUse').textContent = P.car ? '下车' : '上车'; $('bJump').textContent = P.car ? '手刹' : '跳'; $('bBrake').textContent = P.car ? '刹车' : '跑';
+}
+function drawMini() {
+  const g = $('mini').getContext('2d'), S = 336, R = 230, k = S / (R * 2), px = P.car ? P.car.x : P.x, pz = P.car ? P.car.z : P.z; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, S, S); g.save(); g.beginPath(); g.arc(S / 2, S / 2, S / 2 - 4, 0, 7); g.clip(); g.fillStyle = '#0e2a3a'; g.fillRect(0, 0, S, S);
+  g.translate(S / 2, S / 2); g.rotate(Cam.yaw + Math.PI); g.scale(k, -k); g.translate(-px, -pz); g.fillStyle = '#3a3f46'; g.fillRect(-HALF - 6, -HALF - 6, HALF * 2 + 12, HALF * 2 + 12);
+  { const e = City.ext; g.fillStyle = '#2f6b34'; g.fillRect(e.x0, e.z0, e.x1 - e.x0, e.z1 - e.z0); }
+  for (const B of City.blocks) { if (B.sx1 < px - R * 1.5 || B.sx0 > px + R * 1.5 || B.sz1 < pz - R * 1.5 || B.sz0 > pz + R * 1.5) continue; g.fillStyle = /^(park|obs|signal|garden)$/.test(B.kind) ? '#2f6b34' : /^(prom|ferry|aos|culture|space|regent|dock)$/.test(B.kind) ? '#2b3540' : B.kind === 'down' ? '#1b2530' : B.kind === 'ind' ? '#2a2a26' : B.kind === 'res' ? '#24301f' : '#202830'; g.fillRect(B.sx0, B.sz0, B.sx1 - B.sx0, B.sz1 - B.sz0); }
+  const dot = (x, z, r, c) => { g.fillStyle = c; g.beginPath(); g.arc(x, z, r, 0, 7); g.fill(); };
+  for (const c of W.cars) if (c.T.cop) dot(c.x, c.z, 7, (W.t * 4 | 0) & 1 ? '#ff4b4b' : '#4b7bff');
+  for (const t of W.tokens) if (!W.got[t.id] && Math.hypot(t.x - px, t.z - pz) < 150) dot(t.x, t.z, 5, '#ffd34d');
+  dot(City.bank.x0 - 2, (City.bank.z0 + City.bank.z1) / 2, 9, '#ffd34d'); dot(City.shop.x, City.shop.z, 8, '#ff5a4d'); if (W.heat >= 1) for (const p of W.peds) if (p.role === 'cop' && !(p.dead > 0)) dot(p.x, p.z, 6, '#5aa0ff');
+  if (W.tps) for (const t of W.tps) if (Math.hypot(t.x - px, t.z - pz) < 260) dot(t.x, t.z, 6, '#c58bff');
+  const mark = (m, c) => { let dx = m.x - px, dz = m.z - pz; const d = Math.hypot(dx, dz), lim = R - 16; if (d > lim) { dx *= lim / d; dz *= lim / d; } dot(px + dx, pz + dz, 10, c); g.strokeStyle = '#000'; g.lineWidth = 2; g.stroke(); };
+  if (W.job) mark(W.job, '#ffb648'); else if (W.jobPick) mark(W.jobPick, '#4bb8ff');
+  g.restore(); g.fillStyle = '#fff'; g.beginPath(); const a = (P.car ? P.car.h : P.h) - Cam.yaw + Math.PI; g.translate(S / 2, S / 2); g.rotate(-a + Math.PI); g.moveTo(0, -13); g.lineTo(9, 10); g.lineTo(0, 4); g.lineTo(-9, 10); g.fill(); g.setTransform(1, 0, 0, 1, 0, 0);
+  g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 4; g.beginPath(); g.arc(S / 2, S / 2, S / 2 - 4, 0, 7); g.stroke();
+}
+
+/* ---------- 7 · 每一帧 ---------- */
+function update(dt) {
+  W.t += dt; W.time = (W.time + dt * 24 / 720 * (In.keys.KeyT ? 60 : 1)) % 24;
+  const sinY = Math.sin(Cam.yaw), cosY = Math.cos(Cam.yaw); let mx = (In.keys.KeyD || In.keys.ArrowRight ? 1 : 0) - (In.keys.KeyA || In.keys.ArrowLeft ? 1 : 0) + In.sx, mz = (In.keys.KeyW || In.keys.ArrowUp ? 1 : 0) - (In.keys.KeyS || In.keys.ArrowDown ? 1 : 0) - In.sy; mx = clamp(mx, -1, 1); mz = clamp(mz, -1, 1);
+  if (W.dying > 0) { W.dying -= dt; P.lie = Math.min(1, (P.lie || 0) + dt * 2); mx = mz = 0; In.use = In.fire = In.jump = false; $('fade').style.opacity = clamp(1.25 - W.dying / 1.6, 0, 1); if (W.dying <= 0) wasted(); } else { P.lie = 0; const fe = $('fade'); if (fe.style.opacity > 0) fe.style.opacity = Math.max(0, fe.style.opacity - dt * 1.5); }
+  if (In.use) { In.use = false; useKey(); } combatStep(dt);
+  if (P.car) {
+    const c = P.car, r = carStep(c, mz, -mx, !!In.keys.Space || In.jump || In.brake && false, dt); if (In.brake) { const fx = Math.sin(c.h), fz = Math.cos(c.h), vf = c.vx * fx + c.vz * fz; c.vx -= fx * Math.sign(vf) * Math.min(Math.abs(vf), 24 * dt); c.vz -= fz * Math.sign(vf) * Math.min(Math.abs(vf), 24 * dt); c.brake = true; }
+    P.x = c.x; P.z = c.z; P.y = c.y; Snd.engine(Math.abs(r.vf), c.thS || 0, c.T.top / 3.6); Snd.skid(r.skid); if (r.crash > 4) Snd.crash(Math.min(1, r.crash / 22));
+    if (Cam.userT > 0) Cam.userT -= dt; else if (Math.abs(r.vf) > 2) Cam.yaw += angDiff(c.h + Math.PI + (r.vf < -1 ? Math.PI : 0), Cam.yaw) * (1 - Math.exp(-dt * 2.6));
+  } else {
+    const run = In.keys.ShiftLeft || In.keys.ShiftRight || In.brake, len = Math.hypot(mx, mz), sp = len > 0.1 ? (run ? 8 : 4.2) * Math.min(1, len) : 0;
+    if (sp) { const wx = -(mz * sinY) + mx * cosY, wz = -(mz * cosY) - mx * sinY; P.h += angDiff(Math.atan2(wx, wz), P.h) * (1 - Math.exp(-dt * 12)); P.x += wx / len * sp * dt; P.z += wz / len * sp * dt; P.phase += dt * sp * 2.1; }
+    P.sp = sp; pushOut(P, 0.38, P.y - groundY(P.x, P.z) > 0.45 ? 1.4 : 0); for (const c of W.cars) { const dx = P.x - c.x, dz = P.z - c.z, d = Math.hypot(dx, dz); if (d < 9) { const m = c.rad + 0.4; for (const k of c.T.bus ? [1, 0.5, 0, -0.5, -1] : [1, 0, -1]) { const ex = P.x - (c.x + Math.sin(c.h) * c.off * k), ez = P.z - (c.z + Math.cos(c.h) * c.off * k), e = Math.hypot(ex, ez); if (e < m && e > 0.01) { P.x += ex / e * (m - e); P.z += ez / e * (m - e); } } } }
+    const gy = groundY(P.x, P.z); if ((In.keys.Space || In.jump) && P.onGround) { P.vy = 5.6; P.onGround = false; } In.jump = false; P.vy -= 16 * dt; P.y += P.vy * dt; if (P.y <= gy) { P.y = gy; P.vy = 0; P.onGround = true; }
+    Snd.skid(false);
+  }
+  // 交通：周围保持约 26 辆车、34 个行人，走远的回收到玩家附近重新出现
+  let nDrive = 0; for (let i = W.cars.length - 1; i >= 0; i--) { const c = W.cars[i]; if (c === P.car) continue; const d = Math.hypot(c.x - P.x, c.z - P.z); if (c.ai.mode === 'chase') { if (W.heat < 1 || d > 420) { W.cars.splice(i, 1); continue; } if (!P.car && d < 20 && !c.emptied && Math.hypot(c.vx, c.vz) < 6 && footCops() < 2 + 2 * Math.floor(W.heat)) { c.emptied = true; c.ai = { mode: 'parked' }; for (const sd of [-1, 1]) toCop(mkCiv(c.x - Math.cos(c.h) * sd * (c.T.w / 2 + 0.8), c.z + Math.sin(c.h) * sd * (c.T.w / 2 + 0.8)), 20); } }      /* 警车追到跟前，警察下车步行追 */ else if (d > 340 && c.ai.mode !== 'parked' || d > 700) { W.cars.splice(i, 1); continue; } if (c.ai.mode === 'drive') nDrive++; if (d < 260) aiCar(c, dt); }
+  if (nDrive < 26) spawnTraffic(true); carsCollide(dt);
+  const stars = Math.floor(W.heat), cops = W.cars.filter(c => c.ai && c.ai.mode === 'chase'); if (cops.length < stars) { const c = randSeg(); if (c) { const p = nodePos(c.i, c.j), d = Math.hypot(p[0] - P.x, p[1] - P.z); if (d > 90 && d < 280) spawnCar(4, p[0], p[1], Math.atan2(c.di, c.dj), { mode: 'chase' }); } }
+  if (W.heat > 0) { W.heatT -= dt; if (W.heatT <= 0) W.heat = Math.max(0, W.heat - dt * 0.12); const sp = P.car ? Math.hypot(P.car.vx, P.car.vz) : P.sp; if (stars > 0 && sp < 2.5 && cops.some(c => Math.hypot(c.x - P.x, c.z - P.z) < 7)) { W.bustT += dt; if (W.bustT > 2.2) busted(); } else W.bustT = 0; }
+  for (let i = W.peds.length - 1; i >= 0; i--) { const p = W.peds[i]; if (!p) continue; const d = Math.hypot(p.x - P.x, p.z - P.z); if (d > 210 && !p.fixed) { W.peds.splice(i, 1); continue; }
+    { const dn = p.fall > 0 || p.dead > 0; p.lie = dn ? Math.min(1, (p.lie || 0) + dt * 2.3) : Math.max(0, (p.lie || 0) - dt * 2); if (p.kv) { p.x += p.kv[0] * dt; p.z += p.kv[1] * dt; pushOut(p, 0.3); const k = Math.exp(-dt * 4); p.kv[0] *= k; p.kv[1] *= k; if (Math.hypot(p.kv[0], p.kv[1]) < 0.3) p.kv = null; p.y = groundY(p.x, p.z); } }      // 倒地和爬起来都有个过程；被撞、被打会顺着力道滑出去一小段
+    if (p.dead > 0) { p.dead -= dt; if (p.dead <= 0) { if (!p.fixed) W.peds.splice(i, 1); else if (d > 70) { p.dead = 0; p.hp = 90; p.x = p.fx; p.z = p.fz; p.hostile = 0; } else p.dead = 1; } continue; }      // 倒下的人过一阵消失；银行的人等你走远了换班
+    if (p.swing > 0) p.swing -= dt; if (p.flinch > 0) p.flinch -= dt;
+    if (p.fall > 0) { p.fall -= dt; if (p.fall <= 0) p.flee = 8; continue; }
+    if (p.lie > 0.05) continue;
+    if (p.role === 'teller') { p.hands = W.rob || W.alarm > 0 ? 1 : 0; continue; }
+    if (p.role && copAI(p, d, dt)) continue;
+    if (p.cower > 0) { p.cower -= dt; if (p.cower <= 0) p.panic = 4; continue; }                                                          // 抱头蹲着
+    if (p.call > 0) { p.call -= dt; if (p.call <= 0) { if (d < 90) { addHeat(0.8, '报警'); toast('有路人报了警'); } p.panic = 5; } continue; }      // 躲在一边打电话报警
+    if (p.hands > 0) { p.hands -= dt; p.h += angDiff(Math.atan2(P.x - p.x, P.z - p.z), p.h) * (1 - Math.exp(-dt * 8)); if (p.hands <= 0) p.panic = 6; continue; }      // 被武器指着：举手站住，你一移开就跑
+    if (p.mad > 0) { p.mad -= dt; if (P.car || d > 40) p.mad = 0; else { p.h += angDiff(Math.atan2(P.x - p.x, P.z - p.z), p.h) * (1 - Math.exp(-dt * 10)); if (d > 1.3) moveTo(p, P.x, P.z, 5, dt); p.atkT = (p.atkT || 0) - dt; if (d < 1.6 && p.atkT <= 0) { p.atkT = 0.9; p.swing = 0.3; Snd.burst(300, 0.1, 0.3); hurt(6); } runOver(p); continue; } }      // 胆大的人挨了打会追着你还手
+    if (p.panic > 0) {                                                    // 惊慌：背着你（或你的车）一路狂奔，绕开楼和树
+      p.panic -= dt; const T = P.car || P; let ax = p.x - T.x, az = p.z - T.z; const al = Math.hypot(ax, az) || 1, wob = Math.sin(W.t * 3 + p.phase) * 0.35; ax /= al; az /= al; const rx = ax - az * wob, rz = az + ax * wob, sp = 6.4, ox = p.x, oz = p.z;
+      p.x += rx * sp * dt; p.z += rz * sp * dt; if (pushOut(p, 0.3) && Math.hypot(p.x - ox, p.z - oz) < sp * dt * 0.4) { p.x += -az * sp * dt; p.z += ax * sp * dt; pushOut(p, 0.3); }
+      p.h += angDiff(Math.atan2(p.x - ox, p.z - oz), p.h) * (1 - Math.exp(-dt * 10)); p.phase += dt * sp * 2.3; p.sp = 2.6; p.y = groundY(p.x, p.z);
+      if (p.panic <= 0) { p.sp = 1.3 + R2() * 0.5; p.B = blockAt(p.x, p.z); const g = p.B.g, ds = [Math.abs(p.x - g.x0), Math.abs(p.x - g.x1), Math.abs(p.z - g.z0), Math.abs(p.z - g.z1)]; p.side = ds.indexOf(Math.min(...ds)); p.flee = 3; }
+      continue; }
+    if (p.wait > 0) { if (p.flee > 0) p.wait = 0; else { p.wait -= dt; p.y = groundY(p.x, p.z); continue; } } else if (p.phone !== undefined && R2() < dt * 0.02) { p.wait = 3 + R2() * 7; continue; }
+    const B = p.B.g, sp = p.flee > 0 ? 4.6 : p.sp; if (p.flee > 0) p.flee -= dt; let tx, tz; const s = p.side, x0 = B.x0 - 1, x1 = B.x1 + 1, z0 = B.z0 - 1, z1 = B.z1 + 1;      // 绕着街区的人行道走
+    if (s === 0) { tx = x0; tz = p.dir > 0 ? z1 : z0; } else if (s === 1) { tx = x1; tz = p.dir > 0 ? z0 : z1; } else if (s === 2) { tz = z0; tx = p.dir > 0 ? x0 : x1; } else { tz = z1; tx = p.dir > 0 ? x1 : x0; }
+    const dx = tx - p.x, dz = tz - p.z, dd = Math.hypot(dx, dz); if (dd < 0.6) p.side = p.dir > 0 ? [3, 2, 0, 1][s] : [2, 3, 1, 0][s]; else { p.h += angDiff(Math.atan2(dx, dz), p.h) * (1 - Math.exp(-dt * 8)); p.x += dx / dd * sp * dt; p.z += dz / dd * sp * dt; p.phase += dt * sp * 2.1; } p.y = groundY(p.x, p.z);
+    for (const c of W.cars) { const cx = p.x - c.x, cz = p.z - c.z, cd = Math.hypot(cx, cz), v = Math.hypot(c.vx, c.vz); if (cd < 1.7 && v > 3) { p.fall = 4; p.fh = Math.atan2(c.vx, c.vz); p.kv = [c.vx * 0.6, c.vz * 0.6]; if (c === P.car) { addHeat(1, '撞人'); Snd.burst(700, 0.2, 0.4); c.vx *= 0.9; c.vz *= 0.9; } } else if (cd < 7 && v > 9 && p.flee <= 0) p.flee = 2.5; else if (cd < 1.3) { p.x += cx / cd * (1.3 - cd); p.z += cz / cd * (1.3 - cd); } } }
+  if (W.peds.length < 38) { spawnPed(true); const q = W.peds[W.peds.length - 1]; if (q && !q.role && q.fresh === undefined) { q.fresh = 0; if (R2() < 0.08 && footCops() < 3) toCop(q); } }      // 路人里混着几个巡逻的警察
+  // 快递和信标
+  if (W.job) { W.job.t -= dt; if (Math.hypot(W.job.x - P.x, W.job.z - P.z) < 5) { const bonus = Math.round(Math.max(0, W.job.t) * 3); W.cash += W.job.pay + bonus; toast('送达！+$' + (W.job.pay + bonus)); Snd.coin(); W.job = null; newJobPick(); save(); } else if (W.job.t <= 0) { toast('超时了，这单取消'); W.job = null; newJobPick(); } }
+  else if (W.jobPick && Math.hypot(W.jobPick.x - P.x, W.jobPick.z - P.z) < 4.5) startJob();
+  for (const t of W.tokens) if (!W.got[t.id] && Math.hypot(t.x - P.x, t.z - P.z) < (P.car ? 3 : 1.8)) { W.got[t.id] = 1; W.cash += 100; const n = Object.keys(W.got).length; toast(n === W.tokens.length ? '30 个信标全部找齐！+$5000' : '找到信标 ' + n + ' / ' + W.tokens.length + ' · +$100'); if (n === W.tokens.length) W.cash += 5000; Snd.coin(); save(); }
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('toast').classList.remove('on'); }
+  // 镜头：绕着人或车转，被楼挡住就拉近
+  Cam.yaw += In.mx; Cam.pitch = clamp(Cam.pitch + In.my, -0.1, 1.25); if (In.mx || In.my) Cam.userT = 2.5; In.mx = In.my = 0;
+  const ty = P.y + (P.car ? 1.5 : 1.55); const sh = !P.car && !WEPS[W.wep].melee ? 0.6 : 0; Cam.sh = lerp(Cam.sh || 0, sh, 1 - Math.exp(-dt * 8)); Cam.tx = P.x + Math.cos(Cam.yaw) * Cam.sh; Cam.ty = lerp(Cam.ty, ty + Cam.sh * 0.35, 1 - Math.exp(-dt * 10)); Cam.tz = P.z - Math.sin(Cam.yaw) * Cam.sh; const cp = Math.cos(Cam.pitch), dxn = Math.sin(Cam.yaw) * cp, dyn = Math.sin(Cam.pitch), dzn = Math.cos(Cam.yaw) * cp; let dist = Cam.dist;
+  for (let s = 1; s <= 10; s++) { const d = Cam.dist * s / 10, x = Cam.tx + dxn * d, z = Cam.tz + dzn * d, y = Cam.ty + dyn * d, B = blockAt(x, z); if (B && B.boxes.some(b => x > b.x0 - 0.5 && x < b.x1 + 0.5 && z > b.z0 - 0.5 && z < b.z1 + 0.5 && y < b.h + 0.5)) { dist = Math.max(1.2, d - Cam.dist / 10); break; } }
+  Cam.cur = lerp(Cam.cur || dist, dist, 1 - Math.exp(-dt * (dist < (Cam.cur || 99) ? 30 : 4))); Cam.x = Cam.tx + dxn * Cam.cur; Cam.y = Math.max(Cam.ty + dyn * Cam.cur, groundY(Cam.x, Cam.z) + 0.4); Cam.z = Cam.tz + dzn * Cam.cur;
+}
+function busted() { const fine = Math.min(W.cash, 200 + Math.round(W.cash * 0.1)), lost = W.loot; W.cash -= fine; W.loot = 0; calm(); toast(lost ? '被捕 · 赃款 $' + lost.toLocaleString('en-US') + ' 被没收，罚款 $' + fine : '被警察拦下，罚款 $' + fine); save(); }
+/* ---------- 5b · 武器、血量、警察、银行、路人的反应 ---------- */
+const WEPS = [
+  { id: 'fist', name: '拳头', melee: 1, dmg: 14, rate: 0.42, range: 1.7 },
+  { id: 'knife', name: '刀', melee: 1, dmg: 60, rate: 0.5, range: 1.9 },
+  { id: 'pistol', name: '手枪', dmg: 36, rate: 0.3, range: 70, spread: 0.004 },
+  { id: 'smg', name: '冲锋枪', dmg: 20, rate: 0.09, range: 70, spread: 0.022 },
+  { id: 'shot', name: '霰弹枪', dmg: 17, pellets: 7, rate: 0.85, range: 28, spread: 0.07 }];
+Object.assign(W, { hp: 100, armor: 0, wep: 0, has: { fist: 1, knife: 1, pistol: 1 }, ammo: { pistol: 36, smg: 0, shot: 0 }, atkT: 0, swing: 0, aimT: 0, hurtT: 0, safeT: 0, regenT: 0, loot: 0, rob: null, robCd: 0, alarm: 0, drops: [], sfx: [], seenT: 0, shopOpen: false });
+const GUNC = [0.05, 0.05, 0.06], STEEL = [0.7, 0.72, 0.75];
+// 子弹和视线会不会被楼挡住（矮柜台不算）
+const wallAt = (x, z) => { for (const b of blockAt(x, z).boxes) if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && b.h > 1.6) return true; return false; };
+function rayWall(x, z, dx, dz, range) { for (let t = 0.8; t < range; t += 1.1) if (wallAt(x + dx * t, z + dz * t)) return t; return range; }
+function los(ax, az, bx, bz) { const d = Math.hypot(bx - ax, bz - az); return d < 1.2 || rayWall(ax, az, (bx - ax) / d, (bz - az) / d, d) >= d; }
+// 特效：飞行中的曳光（一小段亮线从枪口飞到落点）、枪口火光、溅起的碎屑 / 火星 / 弹壳
+function fxTracer(a, b, col) { const l = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]); W.sfx.push({ k: 0, a, b, l, age: 0, t: l / 280 + 0.03, col: col || [1, 0.9, 0.62] }); }
+function fxFlash(x, y, z, s, col) { W.sfx.push({ k: 1, a: [x, y, z], s, t: 0.05, r: R2() * 3, col: col || [1, 0.8, 0.4] }); }
+function fxPuff(x, y, z, n, col, sp, add, life, g) { for (let i = 0; i < n; i++) W.sfx.push({ k: 2, a: [x, y, z], v: [(R2() - 0.5) * sp, R2() * sp * 0.8, (R2() - 0.5) * sp], t: (life || 0.35) * (0.6 + R2() * 0.6), s: 0.035 + R2() * 0.05, col, add, g: g === undefined ? 7 : g }); }
+function shotSound(x, z, big) { const v = clamp(1 - Math.hypot(x - P.x, z - P.z) / 150, 0, 1); if (v > 0) Snd.shot(v, big); }
+// 一条射线打到了什么：人（看高度，打到头伤害加倍）、车、楼、地面。栏杆这类矮东西不挡子弹
+function rayScene(O, D, tmin, tmax) {
+  let best = { t: tmax, k: 0 }; const a2 = D[0] * D[0] + D[2] * D[2];
+  if (D[1] < -1e-4) { const t = (O[1] - groundY(O[0] + D[0] * 8, O[2] + D[2] * 8) - 0.02) / -D[1], t2 = t > 0 ? (O[1] - groundY(O[0] + D[0] * t, O[2] + D[2] * t) - 0.02) / -D[1] : t; if (t2 > tmin && t2 < best.t) best = { t: t2, k: 1 }; }
+  for (let t = Math.max(tmin, 0.5); t < best.t; t += 1) { const x = O[0] + D[0] * t, y = O[1] + D[1] * t, z = O[2] + D[2] * t; let hit = false; for (const b of blockAt(x, z).boxes) if (!b.thin && x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && y < b.h) { hit = true; break; } if (hit) { best = { t: Math.max(tmin, t - 0.5), k: 2 }; break; } }
+  if (a2 > 1e-6) { const cyl = (cx, cz, r, y0, y1) => { const ox = O[0] - cx, oz = O[2] - cz, tt = -(ox * D[0] + oz * D[2]) / a2, qx = ox + D[0] * tt, qz = oz + D[2] * tt, d2 = qx * qx + qz * qz; if (d2 >= r * r) return -1; const te = tt - Math.sqrt((r * r - d2) / a2), y = O[1] + D[1] * te; return te > tmin && te < best.t && y >= y0 && y <= y1 ? te : -1; };
+    for (const p of W.peds) { if (p.dead > 0) continue; const low = (p.lie || 0) > 0.5, H = low ? 0.45 : 1.85 * (p.s || 1) * (p.cower > 0 ? 0.62 : 1), t = cyl(p.x, p.z, low ? 0.8 : 0.4, p.y, p.y + H); if (t > 0) best = { t, k: 3, ped: p, head: !low && O[1] + D[1] * t > p.y + H * 0.82 }; }
+    for (const c of W.cars) { if (c === P.car) continue; for (const k of c.T.bus ? [1, 0, -1] : [0.6, -0.6]) { const t = cyl(c.x + Math.sin(c.h) * c.off * k, c.z + Math.cos(c.h) * c.off * k, c.rad * 1.05, c.y, c.y + (c.T.bus ? 4.3 : c.T.van ? 2.4 : 1.55)); if (t > 0) best = { t, k: 4, car: c }; } } }
+  return best;
+}
+function cycleWep(to) { if (to !== undefined) { if (W.has[WEPS[to].id]) W.wep = to; } else do { W.wep = (W.wep + 1) % WEPS.length; } while (!W.has[WEPS[W.wep].id]); W.atkT = Math.max(W.atkT, 0.2); Snd.burst(1200, 0.05, 0.15); hud(); }
+
+// 附近的人对枪声 / 打斗的反应：多数人逃跑，胆小的抱头蹲下，有人躲远了打电话报警，司机踩油门冲走，巡逻的警察赶过来
+function alarmPeds(x, z, r, strong) {
+  let caller = null;
+  for (const p of W.peds) { if (p.dead > 0 || p.fall > 0) continue; const d = Math.hypot(p.x - x, p.z - z); if (p.role) { if ((p.role === 'cop' || p.role === 'guard') && d < r + 25) p.alert = 12; continue; } if (d > r || (p.brave && !strong) || p.mad > 0) continue;
+    if (p.caller && !p.called && d > 10 && !caller && !(p.panic > 0)) { caller = p; continue; }
+    if (p.timid && d < 14 && strong) { p.cower = 5 + R2() * 4; p.panic = 0; p.wait = 0; p.hands = 0; } else if (!(p.cower > 0)) { p.panic = Math.max(p.panic || 0, 5 + R2() * 5); p.wait = 0; p.hands = 0; } }
+  if (caller) { caller.call = 3.6; caller.called = true; caller.wait = 0; caller.panic = 0; }
+  for (const c of W.cars) if (c !== P.car && c.ai && c.ai.mode === 'drive' && Math.hypot(c.x - x, c.z - z) < r) c.scared = 7;
+}
+function hitPed(p, dmg, dx, dz, melee) {
+  if (p.dead > 0) return; p.hp = (p.hp === undefined ? 50 : p.hp) - dmg; p.hands = 0; p.cower = 0; p.call = 0; p.wait = 0; const law = p.role === 'cop' || p.role === 'guard';
+  if (p.hp <= 0) { p.dead = 16; p.fh = Math.atan2(dx, dz); p.kv = [dx * (melee ? 1.2 : 2.2), dz * (melee ? 1.2 : 2.2)]; p.panic = 0; p.mad = 0; p.aim = 0; if (law) { addHeat(1.5, '袭警'); W.drops.push({ x: p.x, z: p.z, k: 'ammo', t: 45 }); } else { addHeat(1.1, '伤人'); if (!p.role && R2() < 0.7) W.drops.push({ x: p.x, z: p.z, k: 'cash', n: 20 + ((R2() * 12) | 0) * 10, t: 45 }); } return; }
+  if (law) { p.alert = 20; p.hostile = 25; addHeat(1.2, '袭警'); }
+  else if (!p.role) { addHeat(0.6, '伤人'); if (melee && dmg < 30) { p.fall = 0.9; p.fh = Math.atan2(dx, dz); p.kv = [dx * 1.6, dz * 1.6]; } else p.flinch = 0.25; if (p.brave) p.mad = 14; else p.panic = 9; }
+}
+function mkCiv(x, z, extra) { const p = Object.assign({ x, z, y: groundY(x, z), h: 0, B: blockAt(x, z), side: 0, dir: 1, sp: 1.5, phase: R2() * 6, shirt: [0.2 + R2() * 0.7, 0.2 + R2() * 0.6, 0.2 + R2() * 0.7], pants: [0.1 + R2() * 0.25, 0.1 + R2() * 0.25, 0.14 + R2() * 0.3], skin: [[0.9, 0.72, 0.6], [0.72, 0.52, 0.38], [0.96, 0.8, 0.68]][(R2() * 3) | 0], fall: 0, flee: 0 }, pedLook(), extra || {}); W.peds.push(p); return p; }
+function toCop(p, alert) { return Object.assign(p, { role: 'cop', hp: 90, shirt: [0.5, 0.64, 0.82], pants: [0.08, 0.1, 0.18], hat: [0.08, 0.1, 0.2], skirt: false, shorts: false, sleeve: 0, bag: 0, phone: false, longH: false, brave: false, caller: false, timid: false, alert: alert || 0, atkT: 0.8 + R2(), s: 1.02, w: 1.05, wait: 0, panic: 0 }); }
+const footCops = () => W.peds.reduce((n, p) => n + (p.role === 'cop' && !(p.dead > 0) ? 1 : 0), 0);
+function hitCar(c, dmg, x, z) {
+  c.hp = (c.hp === undefined ? 120 : c.hp) - dmg; Snd.burst(3200, 0.05, 0.2); if (c === P.car || !c.ai) return;
+  if (c.ai.mode === 'drive') { c.scared = 8; if (c.hp < 75 && !c.bailed) { c.bailed = true; c.ai = { mode: 'parked' }; const rx = -Math.cos(c.h), rz = Math.sin(c.h); mkCiv(c.x + rx * (c.T.w / 2 + 0.8), c.z + rz * (c.T.w / 2 + 0.8), { panic: 10, phone: false, bag: 0 }); } }
+  else if (c.ai.mode === 'chase' && c.hp < 60 && !c.emptied) { c.emptied = true; c.ai = { mode: 'parked' }; for (const s of [-1, 1]) toCop(mkCiv(c.x - Math.cos(c.h) * s * (c.T.w / 2 + 0.8), c.z + Math.sin(c.h) * s * (c.T.w / 2 + 0.8)), 20); }
+  if (c.hp <= 0 && !c.wreck) { c.wreck = true; c.ai = { mode: 'parked' }; c.col = c.col.map(v => v * 0.2); fxFlash(c.x, c.y + 1, c.z, 2.2, [1, 0.5, 0.15]); Snd.crash(1); }
+}
+// 玩家出手。拳头和刀打面前的人；枪打的是准星指着的那个点：先沿镜头中心看过去找到落点，子弹再从枪口飞向它，所以准星对着哪就打哪
+function attack() {
+  const w = WEPS[W.wep], fx = -Math.sin(Cam.yaw), fz = -Math.cos(Cam.yaw), fa = Math.atan2(fx, fz); W.atkT = w.rate; W.aimT = 1.4;
+  if (w.melee) { let best = null, bs = 1.15, bd = 0; for (const p of W.peds) { if (p.dead > 0) continue; const dx = p.x - P.x, dz = p.z - P.z, d = Math.hypot(dx, dz); if (d > w.range || d < 0.01) continue; const sc = Math.abs(angDiff(Math.atan2(dx, dz), fa)); if (sc < bs) { bs = sc; best = p; bd = d; } }
+    let ax = fx, az = fz; if (best) { ax = (best.x - P.x) / bd; az = (best.z - P.z) / bd; } P.h = Math.atan2(ax, az); W.swing = 0.3; Snd.burst(w.id === 'knife' ? 3000 : 500, 0.09, 0.25); if (best) { hitPed(best, w.dmg, ax, az, true); Snd.burst(280, 0.12, 0.4); fxPuff(best.x, best.y + 1.3, best.z, 4, [0.5, 0.45, 0.4], 2, false, 0.25); alarmPeds(P.x, P.z, 14, false); } return; }
+  if (W.ammo[w.id] <= 0) { Snd.tone(1400, 0.04, 0.15); toast('没子弹了'); W.atkT = 0.5; return; }
+  W.ammo[w.id]--; const C = [Cam.x, Cam.y, Cam.z]; let D = [Cam.tx - Cam.x, Cam.ty - Cam.y, Cam.tz - Cam.z]; const dl = Math.hypot(D[0], D[1], D[2]) || 1; D = [D[0] / dl, D[1] / dl, D[2] / dl];
+  // 瞄哪里：1) 准星正压在人或车身上，就打那一点（压在头上算爆头）；2) 否则找准星左右最近的那个人（只看左右偏多少，不管镜头抬高压低），对准胸口；3) 都没有就沿准星方向平着打出去
+  const Dh = Math.hypot(D[0], D[2]) || 1, ya = Math.atan2(D[0], D[2]); let aim = null; { const h = rayScene(C, D, dl + 0.6, dl + w.range); if (h.k >= 3) aim = [C[0] + D[0] * h.t, C[1] + D[1] * h.t, C[2] + D[2] * h.t]; }
+  if (!aim) { let ba = In.touch ? 0.16 : 0.06; for (const p of W.peds) { if (p.dead > 0 || (p.lie || 0) > 0.5) continue; const vx = p.x - C[0], vz = p.z - C[2], l = Math.hypot(vx, vz), pd = Math.hypot(p.x - P.x, p.z - P.z); if (pd > w.range || pd < 0.6 || l < dl) continue; const an = Math.abs(angDiff(Math.atan2(vx, vz), ya)) + pd * 0.0006 + (p.role === 'teller' ? 0.04 : 0); if (an < ba && los(P.x, P.z, p.x, p.z)) { ba = an; aim = [p.x, p.y + 1.25 * (p.cower > 0 ? 0.6 : 1), p.z]; } } }
+  if (!aim) aim = [C[0] + D[0] / Dh * (dl + 45), P.y + 1.35, C[2] + D[2] / Dh * (dl + 45)];
+  let hx = aim[0] - P.x, hz = aim[2] - P.z; const hl = Math.hypot(hx, hz); if (hl < 1.2) { hx = fx; hz = fz; aim = [P.x + fx * 30, P.y + 1.3, P.z + fz * 30]; } else { hx /= hl; hz /= hl; } P.h = Math.atan2(hx, hz);
+  const M = [P.x + hx * 0.75 - hz * 0.24, P.y + 1.42, P.z + hz * 0.75 + hx * 0.24]; let B = [aim[0] - M[0], aim[1] - M[1], aim[2] - M[2]]; const bl = Math.hypot(B[0], B[1], B[2]) || 1; B = [B[0] / bl, B[1] / bl, B[2] / bl];
+  fxFlash(M[0] + hx * 0.2, M[1], M[2] + hz * 0.2, w.id === 'shot' ? 0.2 : 0.12); shotSound(P.x, P.z, w.id === 'shot'); W.kick = (W.kick || 0) + (w.id === 'shot' ? 0.03 : w.id === 'smg' ? 0.006 : 0.012); Cam.pitch -= w.id === 'shot' ? 0.03 : w.id === 'smg' ? 0.006 : 0.012;
+  W.sfx.push({ k: 2, a: [M[0] - hx * 0.2, M[1], M[2] - hz * 0.2], v: [-hz * 2.2 + (R2() - 0.5), 2.4 + R2(), hx * 2.2 + (R2() - 0.5)], t: 0.7, s: 0.03, col: [0.75, 0.58, 0.2], add: false, g: 12 });      // 弹壳
+  let hitAny = false;
+  for (let k = 0; k < (w.pellets || 1); k++) { const s1 = (R2() - 0.5) * 2 * w.spread, s2 = (R2() - 0.5) * 2 * w.spread * 0.6, d = [B[0] + -B[2] * s1, B[1] + s2, B[2] + B[0] * s1], l = Math.hypot(d[0], d[1], d[2]); d[0] /= l; d[1] /= l; d[2] /= l;
+    const h = rayScene(M, d, 0.15, w.range), E = [M[0] + d[0] * h.t, M[1] + d[1] * h.t, M[2] + d[2] * h.t]; fxTracer(M, E);
+    if (h.k === 3) { hitAny = true; hitPed(h.ped, w.dmg * (h.head ? 2.2 : 1), d[0], d[2]); fxPuff(E[0], E[1], E[2], 5, [0.35, 0.05, 0.05], 2.2, false, 0.3); }
+    else if (h.k === 4) { hitCar(h.car, w.dmg, E[0], E[2]); fxPuff(E[0], E[1], E[2], 6, [1, 0.8, 0.4], 5, true, 0.22); }
+    else if (h.k) { fxPuff(E[0], E[1], E[2], 5, [0.55, 0.53, 0.5], 2.4, false, 0.45, 3); fxPuff(E[0], E[1], E[2], 2, [1, 0.8, 0.5], 4, true, 0.12); } }
+  if (hitAny) W.hitT = 0.14; alarmPeds(P.x, P.z, 48, true); if (W.heat < 2.2 && W.peds.some(p => !(p.dead > 0) && !p.fixed && Math.hypot(p.x - P.x, p.z - P.z) < 45)) addHeat(0.3, '开枪');
+}
+function hurt(d) { if (W.safeT > 0 || W.dying > 0) return; if (W.armor > 0) { const a = Math.min(W.armor, d * 0.7); W.armor -= a; d -= a; } W.hp -= d; W.hurtT = 0.5; W.regenT = 7; Snd.burst(200, 0.15, 0.35); if (W.hp <= 0) { W.hp = 0; W.dying = 3; W.rob = null; P.fh = P.h + Math.PI; In.fire = false; toast('你倒下了'); Snd.tone(220, 0.9, 0.2); setTimeout(() => Snd.tone(165, 1.2, 0.2), 300); } }      // 血量归零：先倒地、画面变暗，过几秒才送回出生点
+function calm() { W.heat = 0; W.rob = null; W.alarm = 0; W.bustT = 0; if (P.car) { P.car.ai = { mode: 'parked' }; P.car = null; } W.cars = W.cars.filter(c => !(c.ai && c.ai.mode === 'chase')); W.peds = W.peds.filter(p => p.role !== 'cop'); for (const p of W.peds) { p.hostile = 0; p.alert = 0; p.mad = 0; } P.x = City.spawn[0]; P.z = City.spawn[1]; P.y = CURB; Cam.dist = 7; W.safeT = 3; }
+function wasted() { W.dying = 0; P.lie = 0; const fee = Math.min(W.cash, 300 + Math.round(W.cash * 0.08)), lost = W.loot; W.cash -= fee; W.loot = 0; W.hp = 100; calm(); toast(lost ? '医院 · 赃款 $' + lost.toLocaleString('en-US') + ' 没了，医药费 $' + fee : '医院 · 医药费 $' + fee); save(); }
+function moveTo(p, tx, tz, sp, dt) { const dx = tx - p.x, dz = tz - p.z, dd = Math.hypot(dx, dz) || 1, ox = p.x, oz = p.z; p.x += dx / dd * sp * dt; p.z += dz / dd * sp * dt; if (pushOut(p, 0.3) && Math.hypot(p.x - ox, p.z - oz) < sp * dt * 0.4) { const s = p.sd || (p.sd = R2() < 0.5 ? 1 : -1); p.x += -dz / dd * sp * dt * s; p.z += dx / dd * sp * dt * s; pushOut(p, 0.3); } p.phase += dt * sp * 2.2; p.sp = sp / 2.3; p.y = groundY(p.x, p.z); }
+function runOver(p) { for (const c of W.cars) { const v = Math.hypot(c.vx, c.vz); if (v > 4 && Math.hypot(p.x - c.x, p.z - c.z) < 1.7) { p.fall = 3; p.fh = Math.atan2(c.vx, c.vz); p.kv = [c.vx * 0.6, c.vz * 0.6]; if (c === P.car) { hitPed(p, 45, c.vx, c.vz); Snd.burst(700, 0.2, 0.4); } return true; } } return false; }
+// 警察和银行保安：没事时巡逻 / 站岗；一星时跑过来抓人，两星以上（或者被打了）就开枪；看得见你的时候通缉不会消
+function copAI(p, d, dt) {
+  const st = Math.floor(W.heat), guard = p.role === 'guard'; if (p.hostile > 0) p.hostile -= dt; if (p.alert > 0) p.alert -= dt; p.aim = 0;
+  const want = !(W.dying > 0) && (guard ? (!!W.rob || p.hostile > 0 || (W.alarm > 0 && d < 45)) : ((st >= 1 || p.hostile > 0) && d < 120));
+  if (!want) { if (guard) { p.sp = 0; p.wait = 1; if (Math.hypot(p.x - p.fx, p.z - p.fz) > 1) moveTo(p, p.fx, p.fz, 2, dt); return true; } if (p.eng) { p.eng = false; p.sp = 1.4; p.B = blockAt(p.x, p.z); const g = p.B.g, ds = [Math.abs(p.x - g.x0), Math.abs(p.x - g.x1), Math.abs(p.z - g.z0), Math.abs(p.z - g.z1)]; p.side = ds.indexOf(Math.min(...ds)); } return false; }
+  p.eng = true;
+  if (runOver(p)) return true; const T = P.car || P, dx = T.x - p.x, dz = T.z - p.z, sees = d < 70 && los(p.x, p.z, T.x, T.z); if (sees) W.seenT = 3;
+  const lethal = guard || st >= 2 || p.hostile > 0, psp = P.car ? Math.hypot(P.car.vx, P.car.vz) : P.sp; p.h += angDiff(Math.atan2(dx, dz), p.h) * (1 - Math.exp(-dt * 10)); p.wait = 0;
+  if (lethal && sees && d < 36) { p.aim = st >= 3 ? 2 : 1; p.atkT -= dt; if (d > 14 && !guard) moveTo(p, T.x, T.z, 2.6, dt); else p.sp = 0;
+    if (p.atkT <= 0) { p.atkT = (st >= 3 ? 0.3 : 0.8) + R2() * 0.5; const ch = clamp(0.7 - d * 0.014 - (psp > 5 ? 0.18 : 0) - (P.car ? 0.2 : 0), 0.08, 0.8), hit = R2() < ch, o = hit ? 0 : 1.2 + R2() * 1.6, dn = d || 1, fx = dx / dn, fz = dz / dn;
+      fxFlash(p.x + fx * 0.9, p.y + 1.42, p.z + fz * 0.9, 0.3); fxTracer([p.x + fx * 0.9, p.y + 1.42, p.z + fz * 0.9], [T.x - fz * o, P.y + 1.2, T.z + fx * o], [1, 0.9, 0.6]); shotSound(p.x, p.z); if (hit) hurt(P.car ? 4 : st >= 3 ? 7 : 10); if (R2() < 0.25) alarmPeds(p.x, p.z, 30, true); }
+    return true; }
+  moveTo(p, T.x, T.z, 5.8, dt); if (!lethal && !P.car && d < 1.9) { p.cuff = (p.cuff || 0) + dt; if (p.cuff > 0.8) { p.cuff = 0; busted(); } } else p.cuff = 0; return true;
+}
+// 银行：亮出武器走进营业厅按“使用”开抢。警铃一响通缉直接三星；在厅里守到钱装完，再甩掉警察，钱才算到手
+const inHall = () => { const b = City.bank; return !P.car && P.x > b.x0 && P.x < b.x1 && P.z > b.z0 && P.z < b.z1; };
+function startRob() { if (W.robCd > 0) { toast('金库刚被搬空，过一阵再来'); return; } if (W.wep === 0) { toast('先亮出武器（切换武器）'); return; } W.rob = { t: 0, need: 12 }; W.alarm = 45; W.heat = Math.max(W.heat, 3.2); W.heatT = 30; toast('抢劫！守在厅里等钱装完'); alarmPeds(P.x, P.z, 40, true); for (const p of W.peds) if (p.role === 'guard') p.hostile = 60; }
+function bankStep(dt) {
+  if (W.robCd > 0) W.robCd -= dt; if (W.alarm > 0) { W.alarm -= dt; const b = City.bank; if (Math.hypot(P.x - b.x0, P.z - (b.z0 + b.z1) / 2) < 90 && ((W.t * 2.2) | 0) !== (((W.t - dt) * 2.2) | 0)) Snd.tone(((W.t * 2.2) | 0) & 1 ? 960 : 720, 0.3, 0.1); }
+  if (W.rob) { if (inHall()) { W.rob.t += dt; if (W.rob.t >= W.rob.need) { const n = 6000 + ((R2() * 90) | 0) * 100; W.loot += n; W.rob = null; W.robCd = 240; toast('拿到 $' + n.toLocaleString('en-US') + '！甩掉警察才算到手'); Snd.coin(); } } else if (Math.hypot(P.x - City.bank.x0, P.z - (City.bank.z0 + City.bank.z1) / 2) > 30) { W.rob = null; W.robCd = 90; toast('你离开了银行，抢劫中断'); } }
+  if (W.loot > 0 && W.heat < 1 && !W.rob) { W.cash += W.loot; toast('成功脱身！$' + W.loot.toLocaleString('en-US') + ' 到手'); W.loot = 0; Snd.coin(); save(); }
+}
+// 枪店
+const SHOP = [['手枪子弹 ×24', 150, () => { W.ammo.pistol += 24; }], ['冲锋枪（含 90 发）', 1800, () => { W.has.smg = 1; W.ammo.smg += 90; }, () => !W.has.smg], ['冲锋枪子弹 ×60', 400, () => { W.ammo.smg += 60; }, () => W.has.smg], ['霰弹枪（含 16 发）', 2500, () => { W.has.shot = 1; W.ammo.shot += 16; }, () => !W.has.shot], ['霰弹 ×12', 350, () => { W.ammo.shot += 12; }, () => W.has.shot], ['防弹衣', 600, () => { W.armor = 100; }], ['急救包（回满血）', 200, () => { W.hp = 100; }]];
+function openShop() { W.shopOpen = true; In.fire = false; try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { } const L = $('shopList'); L.textContent = ''; for (const it of SHOP) { if (it[3] && !it[3]()) continue; const b = document.createElement('button'); b.textContent = it[0] + ' · $' + it[1]; b.disabled = W.cash < it[1]; b.onclick = () => { if (W.cash < it[1]) return; W.cash -= it[1]; it[2](); Snd.coin(); save(); hud(); openShop(); }; L.appendChild(b); } $('shopCash').textContent = '现金 $' + W.cash.toLocaleString('en-US'); $('shop').hidden = false; }
+function closeShop() { W.shopOpen = false; $('shop').hidden = true; }
+function mug(p) { p.hands = 0; p.panic = 9; const n = 30 + ((R2() * 20) | 0) * 10; W.drops.push({ x: p.x + Math.sin(p.h) * 0.6, z: p.z + Math.cos(p.h) * 0.6, k: 'cash', n, t: 45 }); addHeat(0.5, '打劫'); toast('对方把钱包丢在地上跑了'); }
+function useKey() { if (!P.car) { if (inHall() && !W.rob) { startRob(); return; } if (Math.hypot(P.x - City.shop.x, P.z - City.shop.z) < 3) { openShop(); return; } const m = W.peds.find(p => p.hands > 0 && !p.role && !(p.dead > 0) && Math.hypot(p.x - P.x, p.z - P.z) < 2.6); if (m) { mug(m); return; } } enterExit(); }
+// 每帧：出手、威吓、掉落物、回血、特效计时
+function combatStep(dt) {
+  if (W.atkT > 0) W.atkT -= dt; if (W.swing > 0) W.swing -= dt; if (W.aimT > 0) W.aimT -= dt; if (W.hurtT > 0) W.hurtT -= dt; if (W.safeT > 0) W.safeT -= dt;
+  if (W.shopOpen && (P.car || Math.hypot(P.x - City.shop.x, P.z - City.shop.z) > 5)) closeShop();
+  if (In.fire && W.atkT <= 0 && !W.shopOpen) { if (P.car) { W.atkT = 0.5; Snd.tone(430, 0.25, 0.2); Snd.tone(540, 0.25, 0.15); for (const p of W.peds) if (!p.role && !(p.dead > 0) && Math.hypot(p.x - P.x, p.z - P.z) < 16) p.flee = 2.5; } else attack(); }
+  const w = WEPS[W.wep]; if (!P.car && W.wep > 0) { const fa = Math.atan2(-Math.sin(Cam.yaw), -Math.cos(Cam.yaw)), R = w.melee ? 3.5 : 8; for (const p of W.peds) { if (p.role || p.dead > 0 || p.panic > 0 || p.fall > 0 || p.brave || p.cower > 0 || p.call > 0 || p.mad > 0) continue; const dx = p.x - P.x, dz = p.z - P.z, d = Math.hypot(dx, dz); if (d < R && Math.abs(angDiff(Math.atan2(dx, dz), fa)) < 0.5 && los(P.x, P.z, p.x, p.z)) { p.hands = 1.2; p.wait = 0; } } }      // 被武器指着的人会举手站住
+  for (let i = W.drops.length - 1; i >= 0; i--) { const o = W.drops[i]; o.t -= dt; if (!P.car && Math.hypot(o.x - P.x, o.z - P.z) < 1.5) { if (o.k === 'cash') { W.cash += o.n; toast('捡到 $' + o.n); } else { W.ammo.pistol += 12; if (W.has.smg) W.ammo.smg += 20; toast('捡到弹药'); } Snd.coin(); W.drops.splice(i, 1); } else if (o.t <= 0) W.drops.splice(i, 1); }
+  if (W.regenT > 0) W.regenT -= dt; else if (W.hp < 100) W.hp = Math.min(100, W.hp + dt * 3);
+  if (W.seenT > 0) { W.seenT -= dt; if (W.heat >= 1) W.heatT = Math.max(W.heatT, 5); }
+  for (let i = W.sfx.length - 1; i >= 0; i--) { const f = W.sfx[i]; if ((f.t -= dt) <= 0) { W.sfx.splice(i, 1); continue; } if (f.k === 0) f.age += dt; else if (f.k === 2) { f.a[0] += f.v[0] * dt; f.a[1] += f.v[1] * dt; f.a[2] += f.v[2] * dt; f.v[1] -= f.g * dt; const gy = groundY(f.a[0], f.a[2]) + 0.02; if (f.a[1] < gy) { f.a[1] = gy; f.v[0] *= 0.5; f.v[1] *= -0.3; f.v[2] *= 0.5; } } }
+  if (W.hitT > 0) W.hitT -= dt; $('cross').style.borderColor = W.hitT > 0 ? '#ff5a4d' : 'rgba(255, 255, 255, .85)'; if (W.kick > 0) { const d = W.kick * (1 - Math.exp(-dt * 7)); Cam.pitch += d; W.kick -= d; if (W.kick < 0.0005) W.kick = 0; }      /* 命中时准星闪红；枪口上跳后慢慢落回 */
+  bankStep(dt); $('hurt').style.opacity = Math.max(0, W.hurtT * 1.6) + (W.hp < 30 ? 0.25 : 0);
+}
+
+
+function render() {
+  const gl = Rn.gl; resize();
+  // 太阳：6 点升、18 点落
+  const ang = (W.time - 6) / 12 * Math.PI, sy = Math.sin(ang), sun = [Math.cos(ang) * 0.82, sy, 0.42]; const sl = Math.hypot(sun[0], sun[1], sun[2]); sun[0] /= sl; sun[1] /= sl; sun[2] /= sl;
+  const day = clamp(sun[1] * 4 + 0.35, 0, 1), dusk = clamp(1 - Math.abs(sun[1]) * 3.2, 0, 1) * clamp(sun[1] * 6 + 1, 0, 1), night = clamp(0.25 - sun[1] * 4, 0, 1), sc = [1, lerp(0.5, 0.96, clamp(sun[1] * 3, 0, 1)), lerp(0.24, 0.9, clamp(sun[1] * 2.6, 0, 1))];
+  const cam = [Cam.x, Cam.y, Cam.z], tgt = [Cam.tx, Cam.ty, Cam.tz], asp = Rn.w / Rn.h, fov = 1.05, proj = M4.persp(fov, asp, 0.4, 3200), view = M4.look(cam, tgt, [0, 1, 0]), VP = M4.mul(proj, view);
+  // 阴影：以镜头前方为中心的一块正交区域，对齐到像素格避免抖动
+  const useSh = Rn.q > 0 && sun[1] > 0.06, R = 130, fwd = [tgt[0] - cam[0], 0, tgt[2] - cam[2]], fl = Math.hypot(fwd[0], fwd[2]) || 1, cx = tgt[0] + fwd[0] / fl * 60, cz = tgt[2] + fwd[2] / fl * 60;
+  let SVP = IDENT; if (useSh) { const lv = M4.look([cx + sun[0] * 500, sun[1] * 500, cz + sun[2] * 500], [cx, 0, cz], [0, 1, 0]), tex = R * 2 / Rn.SM; lv[12] = Math.round(lv[12] / tex) * tex; lv[13] = Math.round(lv[13] / tex) * tex; SVP = M4.mul(M4.ortho(-R, R, -R, R, 10, 1100), lv); }
+  const dyn = [];   // [网格, 矩阵, 颜色, 光泽, 灯]
+  for (const c of W.cars) { if (Math.hypot(c.x - cam[0], c.z - cam[2]) > 420) continue; const lightsOn = night > 0.3 && (!c.ai || c.ai.mode !== 'parked') ? 1 : 0.05; dyn.push([Rn.cars[c.type], M4.trs(c.x, c.y + 0.02, c.z, c.h, c.pitch, c.roll, 1, 1, 1), c.col, 1, [lightsOn, c.T.cop && c.ai && c.ai.mode === 'chase' ? (Math.sin(W.t * 14) > 0 ? 1.4 : 0.1) : c.brake ? 1 : lightsOn * 0.4, 0], 0, c.y]); }
+  { const fx = Math.sin(W.t * 0.018) * 420, dir = Math.cos(W.t * 0.018) > 0 ? 1 : -1; dyn.push([Rn.ferry, M4.trs(fx, -0.2 + Math.sin(W.t * 0.9) * 0.08, HALF + 250, dir * Math.PI / 2, 0, Math.sin(W.t * 0.7) * 0.015, 1, 1, 1), [1, 1, 1], 0.2, [night > 0.3 ? 1 : 0, 0, 0], 0, -100]); }      // 渡轮在海上来回
+  // 行人：高矮胖瘦、发型、长短袖、裙子短裤、背包挎包各不相同；走路时手脚摆动、身体轻微起伏。远处的人省掉小零件
+  const person = (p, shirt, pants, skin) => { const lie = p.lie || 0, down = lie > 0.02, fdir = Math.cos((p.fh || 0) - p.h) >= 0 ? 1 : -1, still = p.wait > 0 || p.hands > 0 || p.cower > 0 || p.call > 0 || p.sp === 0, sw = down || still ? 0 : Math.sin(p.phase) * Math.min(1.3, p.sp || 1) * 0.5 * (p.flee > 0 ? 1.3 : 1), hs = (p.s || 1) * (p.cower > 0 && !down ? 0.62 : 1), ws = p.w || 1, held = p.held !== undefined ? p.held : p.role === 'cop' || p.role === 'guard' ? 2 : 0, bob = down || still ? 0 : Math.abs(Math.cos(p.phase)) * 0.028, near = Math.hypot(p.x - cam[0], p.z - cam[2]) < 55;
+    const le = lie * lie * (3 - 2 * lie), base = M4.trs(p.x, p.y + bob + le * 0.12 - Math.sin(lie * Math.PI) * 0.1, p.z, p.h, le * 1.5 * fdir + (p.flinch > 0 ? -0.25 * fdir : 0), 0, ws, hs * (1 - 0.1 * Math.sin(lie * Math.PI)), ws), part = (mesh, ox, oy, oz, rx, w, hh, d, col, py) => dyn.push([mesh, M4.mul(base, M4.mul(M4.trs(ox, oy + py, oz, 0, rx, 0, 1, 1, 1), M4.trs(0, -py, 0, 0, 0, 0, w, hh, d))), col, 0.05, [0, 0, 0], 0, -100]);
+    const hair = p.hair || [0.08, 0.06, 0.05], legU = p.skirt ? skin : pants, legL = p.skirt || p.shorts ? skin : pants, armL = p.sleeve ? shirt : skin, shoe = p.shoe || [0.08, 0.07, 0.07], lean = still ? 0 : 0.04;
+    part(Rn.limb, 0, 1.14, 0, lean, 0.4, 0.52, 0.24, shirt, 0); part(Rn.ball, 0, 1.42, 0, 0, 0.46, 0.2, 0.26, shirt, 0); part(Rn.limb, 0, 0.86, 0, 0, p.skirt ? 0.42 : 0.36, p.skirt ? 0.3 : 0.14, p.skirt ? 0.3 : 0.23, p.skirt ? (p.skirtC || pants) : pants, 0); part(Rn.limb, 0, 1.5, 0, 0, 0.11, 0.1, 0.11, skin, 0);
+    part(Rn.ball, 0, 1.66, 0, 0, 0.21, 0.25, 0.23, skin, 0); if (p.hat) { part(Rn.ball, 0, 1.75, 0, 0, 0.24, 0.13, 0.25, p.hat, 0); part(Rn.ball, 0, 1.72, 0.12, 0, 0.2, 0.03, 0.14, p.hat, 0); } else if (!p.bald) part(Rn.ball, 0, 1.71, -0.025, 0, 0.225, 0.19, 0.22, hair, 0);
+    if (p.longH) part(Rn.ball, 0, 1.56, -0.075, 0, 0.23, 0.34, 0.13, hair, 0);
+    part(Rn.limb, -0.1, 0.62, 0, sw, 0.15, 0.42, 0.16, legU, 0.21); part(Rn.limb, 0.1, 0.62, 0, -sw, 0.15, 0.42, 0.16, legU, 0.21);
+    const k1 = Math.max(0, -sw) * 0.9, k2 = Math.max(0, sw) * 0.9; part(Rn.limb, -0.1, 0.22, -Math.sin(sw) * 0.42, sw - k1, 0.13, 0.42, 0.14, legL, 0.21); part(Rn.limb, 0.1, 0.22, Math.sin(sw) * 0.42, -sw - k2, 0.13, 0.42, 0.14, legL, 0.21);
+    part(Rn.limb, -0.1, 0.03, -Math.sin(sw) * 0.62 + 0.05, 0, 0.11, 0.07, 0.25, shoe, 0); part(Rn.limb, 0.1, 0.03, Math.sin(sw) * 0.62 + 0.05, 0, 0.11, 0.07, 0.25, shoe, 0);
+    const pn = (p.panic > 0 || p.hands > 0 || p.cower > 0) && !down, wv = p.panic > 0 ? Math.sin(p.phase * 2) * 0.35 : 0, aim = p.aim > 0 && !down && !pn, kn = p.swing > 0 && !down && !pn && !aim, ph = (p.phone || p.call > 0) && !down && !pn && !aim && !kn && !held, aw = sw * 0.8, hz = -Math.sin(aw) * 0.3;
+    if (pn) { part(Rn.limb, -0.26, 1.2, 0, -2.75 + wv, 0.1, 0.34, 0.11, shirt, 0.17); part(Rn.limb, 0.26, 1.2, 0, -2.75 - wv, 0.1, 0.34, 0.11, shirt, 0.17); part(Rn.limb, -0.27, 1.8, 0.13, 0.2 + wv, 0.085, 0.32, 0.09, armL, 0); part(Rn.limb, 0.27, 1.8, 0.13, 0.2 - wv, 0.085, 0.32, 0.09, armL, 0); }
+    else { part(Rn.limb, -0.26, 1.2, 0, -aw, 0.1, 0.34, 0.11, shirt, 0.17); part(Rn.limb, -0.26, 0.9, Math.sin(aw) * 0.3, -aw - 0.25, 0.085, 0.32, 0.09, armL, 0.16);
+      if (aim) { const L = p.aim > 1 ? 0.6 : 0.24; part(Rn.limb, 0.24, 1.2, 0, -1.5, 0.1, 0.34, 0.11, shirt, 0.17); part(Rn.limb, 0.24, 0.87, 0, -1.5, 0.085, 0.32, 0.09, armL, 0.5); part(Rn.cube, 0.24, 0.71 - L / 2, 0, -1.5, 0.05, L, 0.11, GUNC, 0.66 + L / 2); }      // 举枪：右臂向前伸直
+      else if (kn) { const a = -2.5 + (1 - p.swing / 0.3) * 2.1; part(Rn.limb, 0.26, 1.2, 0, a, 0.1, 0.34, 0.11, shirt, 0.17); part(Rn.limb, 0.26, 0.87, 0, a, 0.085, 0.32, 0.09, armL, 0.5); if (held === 1) part(Rn.cube, 0.26, 0.5, 0, a, 0.02, 0.32, 0.05, STEEL, 0.87); }      // 挥拳 / 挥刀：右臂从上往下抡
+      else { part(Rn.limb, 0.26, 1.2, 0, ph ? 0.5 : aw, 0.1, 0.34, 0.11, shirt, 0.17); if (ph) part(Rn.limb, 0.24, 1.12, 0.22, 1.9, 0.085, 0.32, 0.09, armL, 0); else { part(Rn.limb, 0.26, 0.9, hz, aw - 0.25, 0.085, 0.32, 0.09, armL, 0.16); if (held === 1) part(Rn.cube, 0.26, 0.7, hz + 0.19, 0, 0.02, 0.045, 0.3, STEEL, 0); else if (held > 1) part(Rn.cube, 0.27, 0.66, hz + 0.1, 0, 0.05, 0.11, held > 2 ? 0.5 : 0.2, GUNC, 0); } } }
+    if (!near) return;
+    if (pn) { part(Rn.ball, -0.27, 2.0, 0.16, 0, 0.09, 0.11, 0.1, skin, 0); part(Rn.ball, 0.27, 2.0, 0.16, 0, 0.09, 0.11, 0.1, skin, 0); } else { part(Rn.ball, -0.26, 0.72, Math.sin(aw) * 0.3, -aw - 0.25, 0.09, 0.11, 0.1, skin, 0.34); if (aim || kn) { } else if (ph) { part(Rn.ball, 0.2, 1.2, 0.36, 0, 0.09, 0.1, 0.09, skin, 0); part(Rn.cube, 0.18, 1.27, 0.38, -0.5, 0.075, 0.15, 0.015, [0.03, 0.03, 0.04], 0); } else part(Rn.ball, 0.26, 0.72, hz, aw - 0.25, 0.09, 0.11, 0.1, skin, 0.34); }
+    for (const ex of [-0.045, 0.045]) part(Rn.ball, ex, 1.685, 0.105, 0, 0.032, 0.026, 0.02, [0.05, 0.04, 0.04], 0); part(Rn.ball, 0, 1.64, 0.115, 0, 0.035, 0.05, 0.03, [skin[0] * 0.92, skin[1] * 0.9, skin[2] * 0.88], 0);
+    if (p.bag === 1) { part(Rn.ball, 0, 1.2, -0.18, 0, 0.3, 0.42, 0.17, p.bagC, 0); part(Rn.cube, -0.13, 1.3, 0.0, 0, 0.04, 0.34, 0.27, p.bagC, 0); part(Rn.cube, 0.13, 1.3, 0.0, 0, 0.04, 0.34, 0.27, p.bagC, 0); }
+    else if (p.bag === 2) { part(Rn.ball, -0.25, 0.88, -0.02, 0, 0.1, 0.24, 0.3, p.bagC, 0); part(Rn.cube, -0.06, 1.22, 0, 0, 0.42, 0.03, 0.26, p.bagC, 0); }
+    else if (p.bag === 3) part(Rn.cube, -0.27, 0.5, Math.sin(aw) * 0.3, -aw * 0.5, 0.06, 0.34, 0.26, p.bagC, 0.3); };
+  if (!P.car) person({ x: P.x, y: P.y, z: P.z, h: P.h, phase: P.phase, sp: P.sp / 4.2, fall: 0, flee: 0, s: 1.02, sleeve: 1, shoe: [0.85, 0.85, 0.83], aim: !WEPS[W.wep].melee && (W.aimT > 0 || In.fire) ? (W.wep >= 3 ? 2 : 1) : 0, swing: W.swing, held: W.wep, lie: P.lie, fh: P.fh }, [0.12, 0.13, 0.16], [0.2, 0.26, 0.4], [0.86, 0.68, 0.55]);
+  for (const p of W.peds) if (Math.hypot(p.x - cam[0], p.z - cam[2]) < 150) person(p, p.shirt, p.pants, p.skin);
+  const beam = (x, z, col, hgt) => { dyn.push([Rn.cube, M4.trs(x, hgt / 2, z, W.t, 0, 0, 1.4, hgt, 1.4), [col[0] * 0.5, col[1] * 0.5, col[2] * 0.5], 0, [1, 1, 0], 7, -100]); };
+  if (W.job) beam(W.job.x, W.job.z, [1, 0.7, 0.2], 60); else if (W.jobPick) beam(W.jobPick.x, W.jobPick.z, [0.2, 0.6, 1], 40);
+  for (const t of W.tokens) if (!W.got[t.id] && Math.hypot(t.x - cam[0], t.z - cam[2]) < 220) dyn.push([Rn.cube, M4.trs(t.x, t.y + 1.2 + Math.sin(W.t * 2 + t.id) * 0.15, t.z, W.t * 1.5, 0.6, 0.6, 0.5, 0.5, 0.5), [0.6, 0.45, 0.1], 0, [1, 1, 0], 7, -100]);
+  beam(City.shop.x, City.shop.z, [1, 0.3, 0.2], 5);
+  for (const o of W.drops) dyn.push([Rn.cube, M4.trs(o.x, groundY(o.x, o.z) + 0.45 + Math.sin(W.t * 3 + o.x) * 0.08, o.z, W.t * 2, 0, 0, o.k === 'cash' ? 0.34 : 0.3, 0.2, 0.2), o.k === 'cash' ? [0.04, 0.2, 0.06] : [0.2, 0.16, 0.06], 0, [1, 1, 0], 7, -100]);      // 掉在地上的钱和弹药
+  for (const f of W.sfx) { if (f.k === 0) { const head = Math.min(f.l, f.age * 280), tail = Math.max(0, head - 5.5), len = head - tail; if (len < 0.05) continue; const ux = (f.b[0] - f.a[0]) / f.l, uy = (f.b[1] - f.a[1]) / f.l, uz = (f.b[2] - f.a[2]) / f.l, m = (head + tail) / 2, tx = f.a[0] + ux * m, ty = f.a[1] + uy * m, tz = f.a[2] + uz * m, tw = Math.max(0.012, Math.hypot(tx - Cam.x, ty - Cam.y, tz - Cam.z) * 0.0017); dyn.push([Rn.cube, M4.trs(tx, ty, tz, Math.atan2(ux, uz), -Math.asin(uy), 0, tw, tw, len), f.col, 0, [1, 1, 0], 7, -100]); }
+    else if (f.k === 1) { dyn.push([Rn.ball, M4.trs(f.a[0], f.a[1], f.a[2], 0, 0, 0, f.s, f.s, f.s), f.col, 0, [1, 1, 0], 7, -100]); for (let q = 0; q < 2; q++) dyn.push([Rn.cube, M4.trs(f.a[0], f.a[1], f.a[2], f.r + q * 1.57, f.r * 2 + q, 0, f.s * 0.2, f.s * 0.2, f.s * 2.6), f.col, 0, [1, 1, 0], 7, -100]); }
+    else dyn.push([Rn.cube, M4.trs(f.a[0], f.a[1], f.a[2], f.t * 9, f.t * 7, 0, f.s, f.s, f.s), f.add ? [f.col[0] * Math.min(1, f.t * 6), f.col[1] * Math.min(1, f.t * 6), f.col[2] * Math.min(1, f.t * 6)] : f.col, 0, f.add ? [1, 1, 0] : [0, 0, 0], f.add ? 7 : 0, -100]); }      // 曳光、枪口火光、碎屑
+  // 1) 阴影贴图
+  if (useSh) { gl.bindFramebuffer(gl.FRAMEBUFFER, Rn.shFB); gl.viewport(0, 0, Rn.SM, Rn.SM); gl.clear(gl.DEPTH_BUFFER_BIT); gl.useProgram(Rn.depth.p); gl.uniformMatrix4fv(Rn.depth.u.uVP, false, SVP); gl.uniformMatrix4fv(Rn.depth.u.uM, false, IDENT); gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4); gl.bindVertexArray(Rn.city.vao); gl.drawArrays(gl.TRIANGLES, 0, Rn.city.n); for (const d of dyn) { if (d[5]) continue; gl.uniformMatrix4fv(Rn.depth.u.uM, false, d[1]); gl.bindVertexArray(d[0].vao); gl.drawArrays(gl.TRIANGLES, 0, d[0].n); } gl.disable(gl.POLYGON_OFFSET_FILL); }
+  const T = Rn.T; gl.bindFramebuffer(gl.FRAMEBUFFER, T.msfb || T.fb); gl.viewport(0, 0, Rn.w, Rn.h); gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
+  const common = u => { gl.uniform3fv(u.uSun, sun); gl.uniform3fv(u.uSunCol, sc); gl.uniform3fv(u.uCam, cam); gl.uniform1f(u.uDay, day); gl.uniform1f(u.uDusk, dusk); gl.uniform1f(u.uNight, night); gl.uniform1f(u.uTime, W.t); };
+  // 2) 天空
+  gl.depthMask(false); gl.disable(gl.DEPTH_TEST); gl.useProgram(Rn.sky.p); common(Rn.sky.u); gl.uniform3f(Rn.sky.u.uR, view[0], view[4], view[8]); gl.uniform3f(Rn.sky.u.uU, view[1], view[5], view[9]); gl.uniform3f(Rn.sky.u.uF, -view[2], -view[6], -view[10]); gl.uniform2f(Rn.sky.u.uTan, Math.tan(fov / 2) * asp, Math.tan(fov / 2)); gl.bindVertexArray(null); gl.drawArrays(gl.TRIANGLES, 0, 3); gl.depthMask(true); gl.enable(gl.DEPTH_TEST);
+  // 3) 海
+  gl.useProgram(Rn.water.p); common(Rn.water.u); gl.uniformMatrix4fv(Rn.water.u.uVP, false, VP); gl.bindVertexArray(Rn.sea.vao); gl.drawArrays(gl.TRIANGLES, 0, 6);
+  // 4) 城市和会动的东西
+  const U = Rn.main.u; gl.useProgram(Rn.main.p); common(U); gl.uniformMatrix4fv(U.uVP, false, VP); gl.uniformMatrix4fv(U.uSVP, false, SVP); gl.uniform1f(U.uShadowOn, useSh ? 1 : 0); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, Rn.atlas); gl.uniform1i(U.uAtlas, 1); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, Rn.lampTex); gl.uniform1i(U.uLamp, 3); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, Rn.shTex); gl.uniform1i(U.uShadow, 0); gl.uniform1f(U.uCarY, -100);
+  const pc = P.car; if (pc && night > 0.3) { gl.uniform4f(U.uHL, pc.x + Math.sin(pc.h) * 2.2, pc.y + 0.8, pc.z + Math.cos(pc.h) * 2.2, 1); const l = Math.hypot(Math.sin(pc.h), 0.12, Math.cos(pc.h)); gl.uniform3f(U.uHLd, Math.sin(pc.h) / l, -0.12 / l, Math.cos(pc.h) / l); } else gl.uniform4f(U.uHL, 0, 0, 0, 0);
+  gl.uniformMatrix4fv(U.uM, false, IDENT); gl.uniform3f(U.uTint, 1, 1, 1); gl.uniform1f(U.uGloss, 0); gl.uniform3f(U.uLights, night > 0.25 ? 1 : 0, 0, 0); gl.bindVertexArray(Rn.city.vao); gl.drawArrays(gl.TRIANGLES, 0, Rn.city.n);
+  for (const d of dyn) { gl.uniformMatrix4fv(U.uM, false, d[1]); gl.uniform3fv(U.uTint, d[2]); gl.uniform1f(U.uGloss, d[3]); gl.uniform3fv(U.uLights, d[4]); gl.uniform1f(U.uCarY, d[6] === undefined ? -100 : d[6]); gl.bindVertexArray(d[0].vao); if (d[5]) { gl.disableVertexAttribArray(3); gl.vertexAttrib1f(3, 7); gl.disableVertexAttribArray(2); gl.vertexAttrib3fv(2, d[2]); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false); gl.drawArrays(gl.TRIANGLES, 0, d[0].n); gl.depthMask(true); gl.disable(gl.BLEND); gl.enableVertexAttribArray(3); gl.enableVertexAttribArray(2); } else gl.drawArrays(gl.TRIANGLES, 0, d[0].n); }
+  gl.bindVertexArray(null);
+  // 5) 后期：亮的地方溢出一圈光（泛光），再统一调色
+  if (T.msfb) { gl.bindFramebuffer(gl.READ_FRAMEBUFFER, T.msfb); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, T.fb); gl.blitFramebuffer(0, 0, Rn.w, Rn.h, 0, 0, Rn.w, Rn.h, T.ao && Rn.q > 0 && !Rn.noAO ? gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT : gl.COLOR_BUFFER_BIT, gl.NEAREST); if (!Rn.aoChk) { Rn.aoChk = 1; if (gl.getError()) Rn.noAO = 1; }; }
+  gl.disable(gl.DEPTH_TEST); gl.viewport(0, 0, T.bw, T.bh); gl.activeTexture(gl.TEXTURE0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, T.ba); gl.useProgram(Rn.bright.p); gl.bindTexture(gl.TEXTURE_2D, T.tex); gl.uniform1i(Rn.bright.u.uTex, 0); gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.useProgram(Rn.blur.p); gl.uniform1i(Rn.blur.u.uTex, 0); for (let k = 0; k < 2; k++) { gl.bindFramebuffer(gl.FRAMEBUFFER, T.bb); gl.bindTexture(gl.TEXTURE_2D, T.ta); gl.uniform2f(Rn.blur.u.uDir, (1 + k) / T.bw, 0); gl.drawArrays(gl.TRIANGLES, 0, 3); gl.bindFramebuffer(gl.FRAMEBUFFER, T.ba); gl.bindTexture(gl.TEXTURE_2D, T.tb); gl.uniform2f(Rn.blur.u.uDir, 0, (1 + k) / T.bh); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, Rn.w, Rn.h); gl.useProgram(Rn.post.p); gl.bindTexture(gl.TEXTURE_2D, T.tex); gl.uniform1i(Rn.post.u.uTex, 0); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, T.ta); gl.uniform1i(Rn.post.u.uBloom, 1); gl.uniform1f(Rn.post.u.uDay, day + clamp(sun[1] - 0.25, 0, 0.6) * 0.6); gl.uniform1f(Rn.post.u.uBloomK, Rn.hdr ? 0.75 : 0.35); { const u = Rn.post.u, on = T.ao && !Rn.noAO && (Rn.q > 0 || window.__ao); gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, T.dtex); gl.uniform1i(u.uDepth, 2); gl.uniform1f(u.uAO, on ? 1 : 0); gl.uniform2f(u.uNF, 0.4, 3200); gl.uniform2f(u.uTanA, Math.tan(fov / 2) * asp, Math.tan(fov / 2)); gl.uniform2f(u.uPx, 1 / Rn.w, 1 / Rn.h); } gl.drawArrays(gl.TRIANGLES, 0, 3); gl.activeTexture(gl.TEXTURE0); gl.enable(gl.DEPTH_TEST);
+}
+let last = 0, acc = 0, hudN = 0, slow = 0;
+function frame(ts) {
+  requestAnimationFrame(frame); const dt = Math.min(0.05, (ts - last) / 1000 || 0.016); last = ts;
+  if (W.started && !W.paused) { update(dt); if ((hudN++ & 3) === 0) { hud(); drawMini(); } if (dt > 0.03) { if (++slow > 90 && (Rn.auto || 1) > 0.55) { Rn.auto = (Rn.auto || 1) * 0.8; slow = 0; } } else slow = Math.max(0, slow - 2); }
+  else { W.t += dt; Cam.yaw += dt * 0.05; const cp = Math.cos(0.32); Cam.tx = P.x; Cam.ty = 30; Cam.tz = P.z; if (!W.started) { Cam.tx = -120; Cam.tz = 260; Cam.x = Cam.tx + Math.sin(Cam.yaw) * cp * 330; Cam.y = 120; Cam.z = Cam.tz + Math.cos(Cam.yaw) * cp * 330; } }
+  render();
+}
+function setPaused(p) { if (!W.started) return; W.paused = p; $('menu').hidden = !p; if (p) { $('go').textContent = '继续'; $('reset').hidden = false; try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { } Snd.engine(0, 0); Snd.skid(false); if (Snd.ctx) Snd.eg.gain.value = 0; save(); } }
+function boot() {
+  try { initGL(); } catch (e) { $('err').hidden = false; $('err').textContent = e.message; $('go').disabled = true; return; }
+  load(); const RT = rng(4242); for (let i = 0; i < 30; i++) { const s = City.spots[(RT() * City.spots.length) | 0]; W.tokens.push({ id: i, x: s[0] + RT() * 2 - 1, z: s[1] + RT() * 2 - 1, y: groundY(s[0], s[1]) }); }
+  P.y = groundY(P.x, P.z); for (let i = 0; i < 26; i++) spawnTraffic(false); for (let i = 0; i < 34; i++) spawnPed(false);
+  for (let k = 0; k < 90; k++) { const B = City.blocks[(R2() * City.blocks.length) | 0], sd = (R2() * 4) | 0; if (!B.open[sd]) continue; const onX = sd < 2, hw = onX ? HX[B.i + (sd === 1 ? 1 : 0)] : HZ[B.j + (sd === 3 ? 1 : 0)], len = onX ? B.z1 - B.z0 : B.x1 - B.x0; if (hw < 5.5 || len < 34) continue;      // 只在够宽的路边停车
+    const t = 14 + R2() * (len - 28), x = onX ? (sd === 0 ? B.sx0 - 1.15 : B.sx1 + 1.15) : B.x0 + t, z = onX ? B.z0 + t : (sd === 2 ? B.sz0 - 1.15 : B.sz1 + 1.15); if (W.cars.some(o => Math.hypot(o.x - x, o.z - z) < 8)) continue; const q = R2(); spawnCar(q < 0.15 ? 1 : q < 0.3 ? 3 : q < 0.42 ? 2 : q < 0.6 ? 6 : q < 0.75 ? 7 : 0, x, z, onX ? 0 : Math.PI / 2, { mode: 'parked' }); }
+  spawnCar(1, P.x + 8, ZS[12] + HZ[12] - 1.25, Math.PI / 2, { mode: 'parked' }).col = [0.55, 0.04, 0.04]; newJobPick();
+  // 输入
+  addEventListener('keydown', e => { if (e.code === 'Escape' || e.code === 'KeyP') { setPaused(!W.paused); return; } if (W.paused) return; In.keys[e.code] = true; if (e.code === 'KeyF' || e.code === 'KeyE') In.use = true; if (e.code === 'KeyQ') cycleWep(); if (/^Digit[1-5]$/.test(e.code)) cycleWep(+e.code[5] - 1); if (e.code === 'KeyJ') In.fire = true; if (e.code === 'KeyC') Cam.userT = 0; if (/^(Arrow|Space)/.test(e.code)) e.preventDefault(); });
+  addEventListener('keyup', e => { In.keys[e.code] = false; if (e.code === 'KeyJ') In.fire = false; }); addEventListener('blur', () => { In.keys = {}; });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && !W.paused) setPaused(true); });
+  const cv = $('cv'); document.addEventListener('mousemove', e => { if (document.pointerLockElement === cv) { In.mx -= e.movementX * 0.0028; In.my += e.movementY * 0.0022; } else if (In.drag) { In.mx -= e.movementX * 0.005; In.my += e.movementY * 0.004; } });
+  cv.addEventListener('pointerdown', e => { if (W.paused) return; Snd.init(); if (e.pointerType === 'mouse') { if (document.pointerLockElement === cv && e.button === 0) In.fire = true; In.drag = true; try { const p = cv.requestPointerLock(); if (p && p.catch) p.catch(() => { }); } catch (x) { } return; } setTouch(true); if (In.look === null) { In.look = e.pointerId; In.lx = e.clientX; In.ly = e.clientY; try { cv.setPointerCapture(e.pointerId); } catch (x) { } } e.preventDefault(); });
+  cv.addEventListener('pointermove', e => { if (e.pointerId === In.look) { In.mx -= (e.clientX - In.lx) * 0.0075; In.my += (e.clientY - In.ly) * 0.005; In.lx = e.clientX; In.ly = e.clientY; } });
+  const up = e => { if (e.pointerType === 'mouse') { In.drag = false; In.fire = false; } if (e.pointerId === In.look) In.look = null; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); addEventListener('mouseup', () => { In.drag = false; In.fire = false; });
+  cv.addEventListener('wheel', e => { Cam.dist = clamp(Cam.dist + Math.sign(e.deltaY) * 0.8, 3, 18); e.preventDefault(); }, { passive: false }); cv.addEventListener('contextmenu', e => e.preventDefault());
+  const st = $('stick'), knob = st.firstElementChild; let sid = null; const sset = e => { const r = st.getBoundingClientRect(); let dx = (e.clientX - r.left - r.width / 2) / 46, dy = (e.clientY - r.top - r.height / 2) / 46; const d = Math.hypot(dx, dy); if (d > 1) { dx /= d; dy /= d; } In.sx = Math.abs(dx) < 0.12 ? 0 : dx; In.sy = Math.abs(dy) < 0.12 ? 0 : dy; knob.style.transform = 'translate(' + dx * 40 + 'px,' + dy * 40 + 'px)'; };
+  st.addEventListener('pointerdown', e => { sid = e.pointerId; try { st.setPointerCapture(sid); } catch (x) { } Snd.init(); sset(e); e.preventDefault(); }); st.addEventListener('pointermove', e => { if (e.pointerId === sid) sset(e); }); const send = e => { if (e.pointerId !== sid) return; sid = null; In.sx = In.sy = 0; knob.style.transform = ''; }; st.addEventListener('pointerup', send); st.addEventListener('pointercancel', send);
+  const hold = (id, on, off) => { const b = $(id); b.addEventListener('pointerdown', e => { on(); e.preventDefault(); }); const u = () => off && off(); b.addEventListener('pointerup', u); b.addEventListener('pointercancel', u); b.addEventListener('pointerleave', u); };
+  hold('bFire', () => { In.fire = true; }, () => { In.fire = false; }); hold('bWep', () => cycleWep()); $('shopX').onclick = closeShop;
+  { const b = City.bank; for (const t of b.tellers) mkCiv(t[0], t[1], { role: 'teller', fixed: true, fx: t[0], fz: t[1], h: -Math.PI / 2, shirt: [0.9, 0.9, 0.92], pants: [0.1, 0.1, 0.14], bag: 0, phone: false, hat: null, wait: 1, sp: 0, s: 1 }); Object.assign(toCop(mkCiv(b.guard[0], b.guard[1], { fixed: true, fx: b.guard[0], fz: b.guard[1], h: -Math.PI / 2 })), { role: 'guard', shirt: [0.3, 0.32, 0.36], hat: [0.12, 0.12, 0.14], sp: 0 }); }      // 银行的柜员和保安
+  hold('bUse', () => { In.use = true; }); hold('bJump', () => { In.jump = true; In.keys.Space = !!P.car; }, () => { In.keys.Space = false; In.jump = false; }); hold('bBrake', () => { In.brake = true; }, () => { In.brake = false; }); hold('bCam', () => { Cam.dist = Cam.dist > 12 ? 5 : Cam.dist + 4; Cam.userT = 0; });
+  const setTouch = v => { if (In.touch !== v) { In.touch = v; $('game').dataset.touch = v ? 1 : 0; } }; if (matchMedia('(pointer: coarse)').matches) setTouch(true); addEventListener('touchstart', () => setTouch(true), { passive: true });
+  for (const k of ['gesturestart', 'gesturechange']) document.addEventListener(k, e => e.preventDefault(), { passive: false });
+  const seg = (id, key, f) => { for (const b of $(id).children) b.onclick = () => { for (const o of $(id).children) o.setAttribute('aria-pressed', o === b); f(+b.dataset[key]); }; };
+  seg('qSeg', 'q', v => { Rn.q = v; Rn.auto = 1; }); seg('tSeg', 't', v => { W.time = v; });
+  $('go').onclick = () => { Snd.init(); if (Snd.ctx && Snd.ctx.state === 'suspended') Snd.ctx.resume(); if (!W.started) { W.started = true; Cam.yaw = 2.2; Cam.pitch = 0.22; toast('欢迎来到香港尖沙咀'); } W.paused = false; $('menu').hidden = true; };
+  $('reset').onclick = () => { if (P.car) { P.car.ai = { mode: 'parked' }; P.car = null; } P.x = City.spawn[0]; P.z = City.spawn[1]; P.y = CURB; W.heat = 0; $('go').click(); };
+  $('pauseBtn').onclick = () => setPaused(!W.paused);
+  // 传送点：每个地标旁边的人行道上一个。b = 地标所在的街区 [列, 行]，s = 站在街区的哪一侧（0 西 1 东 2 北 3 南）
+  W.tps = City.marks.map(t => { const o = { x: t.x, z: t.z }; pushOut(o, 0.5); return { name: t.name, x: o.x, z: o.z, cx: t.cx, cz: t.cz }; });
+  const tpGo = t => { if (P.car) { P.car.ai = { mode: 'parked' }; P.car.vx = P.car.vz = 0; P.car = null; Cam.dist = 7; } P.x = t.x; P.z = t.z; P.y = groundY(t.x, t.z); P.vy = 0; P.h = Math.atan2(t.cx - t.x, t.cz - t.z); const first = !W.started; $('go').click(); Cam.yaw = Math.atan2(t.x - t.cx, t.z - t.cz); Cam.pitch = 0.16; Cam.userT = 3; Cam.cur = 0; toast((first ? '欢迎来到香港尖沙咀 · ' : '') + t.name); };
+  for (const t of W.tps) { const b = document.createElement('button'); b.textContent = t.name; b.onclick = () => tpGo(t); $('tpSeg').appendChild(b); }
+  $('tpBtn').onclick = () => { setPaused(true); $('tpRow').scrollIntoView({ block: 'center' }); };
+  addEventListener('resize', resize); requestAnimationFrame(frame);
+}
+(function () { const hot = window.claude && window.claude.hot; if (hot && hot.ready) hot.ready(boot); else boot(); })();
+</script>
+</body></html>
